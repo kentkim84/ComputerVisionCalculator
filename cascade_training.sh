@@ -21,15 +21,21 @@ echo
 echo -e "\e[31;43m***** PREPARE FILE AND FOLDER *****\e[0m"
 if [ -r ~/opencv_workplace/data ]; then
 mv ~/opencv_workplace/data ~/opencv_workplace/resources/"$NEW_DIR"
-echo "data folder moved to resource folder"
+echo "Data folder moved to resource folder"
+else
+echo "Data folder doesn't exist"
 fi
 if [ -r ~/opencv_workplace/info ]; then
 mv ~/opencv_workplace/info ~/opencv_workplace/resources/"$NEW_DIR"
-echo "info folder moved to resource folder"
+echo "Info folder moved to resource folder"
+else
+echo "Info folder doesn't exist"
 fi
 if [ -r ~/opencv_workplace/*.vec ]; then
 mv ~/opencv_workplace/*.vec ~/opencv_workplace/resources/"$NEW_DIR"
-echo "positive.vec file moved to resource folder"
+echo "Vector file moved to resource folder"
+else
+echo "Vector file doesn't exist"
 fi
 echo "Preparation Finished"
 echo
@@ -38,12 +44,35 @@ echo -e "\e[31;43m***** CREATE POSITIVE IMAGES *****\e[0m"
 # - Create the 'info' folder then generate positive images
 ## only test purpose ##
 mkdir ~/opencv_workplace/info
+echo "Info folder created"
 # Phase 2: Create vertor a vector file
 echo -e "\e[31;43m***** CREATE A VERTOR FILE *****\e[0m"
+## only test purpose ##
+echo "test" >> ~/opencv_workplace/test.vec
 echo "Vector file created"
 # Phase 3: Start train
 echo -e "\e[31;43m***** TRAIN AND CREATE CASCADE CLASSIFIER *****\e[0m"
 # - Create the 'data' folder for the next positive source
 mkdir ~/opencv_workplace/data
+echo "Data folder created"
 echo "Train finished"
+# Phase 4: Move trained data
+if [ -r ~/opencv_workplace/data ]; then
+mv ~/opencv_workplace/data ~/opencv_workplace/resources/"$NEW_DIR"
+echo "Data folder moved to resource folder"
+else
+echo "Data folder doesn't exist"
+fi
+if [ -r ~/opencv_workplace/info ]; then
+mv ~/opencv_workplace/info ~/opencv_workplace/resources/"$NEW_DIR"
+echo "Info folder moved to resource folder"
+else
+echo "Info folder doesn't exist"
+fi
+if [ -r ~/opencv_workplace/*.vec ]; then
+mv ~/opencv_workplace/*.vec ~/opencv_workplace/resources/"$NEW_DIR"
+echo "Vector file moved to resource folder"
+else
+echo "Vector file doesn't exist"
+fi
 done
