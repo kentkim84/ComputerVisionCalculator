@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"    
     mc:Ignorable="d">
 
-    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="rootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -16,21 +16,26 @@
         <StackPanel Background="LightGray">
             <!--Command-Bar Control-->
             <CommandBar HorizontalAlignment="Center">
-                <AppBarToggleButton x:Name="CameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
-                <AppBarToggleButton x:Name="FileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
+                <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="cameraButton_Tapped"/>
+                <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="fileButton_Tapped"/>
             </CommandBar>
         </StackPanel>
 
-        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Background="LightCyan">
+        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Background="LightSlateGray">
             <!--Camera Preview-->
-            <CaptureElement x:Name="PreviewControl" Stretch="Uniform" Visibility="Visible" />
+            <CaptureElement x:Name="previewControl" Stretch="Uniform" Visibility="Visible" />
             <!--Image Preview-->
-            <Image x:Name="ImageControl" Stretch="Uniform" Visibility="Collapsed" />
+            <Image x:Name="imageControl" Stretch="Uniform" Visibility="Collapsed" />
+            <Rectangle x:Name="touchRectangle" Height="100" Width="200" Fill="AliceBlue"                
+                ManipulationMode="All"                
+                Visibility="Visible">
+            </Rectangle>
+
         </Grid>
 
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="1" Background="LightCoral">
             <!--Camera Control-->
-            <Button x:Name="PhotoButton" Margin="0,0,20,0" Tapped="PhotoButton_Tapped" Visibility="Visible">
+            <Button x:Name="photoButton" Margin="0,0,20,0" Tapped="photoButton_Tapped" Visibility="Visible">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Grid>
@@ -42,9 +47,10 @@
                     </ControlTemplate>
                 </Button.Template>
             </Button>
-            <!--Image-Crop Control-->
         </StackPanel>
-        
+
+        <!--Image-Cropping Control-->
+
 
     </Grid>
 

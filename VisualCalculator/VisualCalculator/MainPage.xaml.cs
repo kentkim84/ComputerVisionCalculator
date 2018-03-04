@@ -29,6 +29,7 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -49,15 +50,36 @@ namespace VisualCalculator
         // Prevent the screen from sleeping while the camera is running
         private readonly DisplayRequest _displayRequest = new DisplayRequest();
 
+        // Global translation transform used for changing the position of 
+        // the Rectangle based on input data from the touch contact.
+        private TranslateTransform _translateTransform;
+
+        // Provide low-level details for each touch contact, 
+        // including pointer motion and the ability to distinguish press and release events.
+        //private PointerEventHandler _pointerEventHandler;
+          
         #region Constructor, lifecycle and navigation
+
         public MainPage()
         {
             this.InitializeComponent();
 
             Application.Current.Suspending += Application_Suspending;
 
-        }
+            // Listener for the ManipulationDelta event.
+            touchRectangle.ManipulationDelta += touchRectangle_ManipulationDelta;
+            // New translation transform populated in 
+            // the ManipulationDelta handler.
+            _translateTransform = new TranslateTransform();
+            // Apply the translation to the Rectangle.
+            touchRectangle.RenderTransform = this._translateTransform;
 
+            // Listener fot the PointerEvents event.
+            touchRectangle.PointerPressed += touchRectangle_PointerPressed;
+            touchRectangle.PointerMoved += touchRectangle_PointerMoved;
+            touchRectangle.PointerReleased += touchRectangle_PointerReleased;
+        }
+        
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
         {
             // Handle global application events only if this page is active
@@ -78,21 +100,18 @@ namespace VisualCalculator
 
 
         #region Event handlers
-        private async void PhotoButton_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            await TakePhotoAsync();
-        }
 
-
-        private async void CameraButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void cameraButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            PreviewControl.Visibility = Visibility.Visible;
-            ImageControl.Visibility = Visibility.Collapsed;
+            // Visibility change
+            previewControl.Visibility = Visibility.Visible;
+            photoButton.Visibility = Visibility.Visible;
+            imageControl.Visibility = Visibility.Collapsed;
 
             await InitializeCameraAsync();            
         }
 
-        private async void FileButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void fileButton_Tapped(object sender, TappedRoutedEventArgs e)
         {            
             var picker = new FileOpenPicker()
             {
@@ -104,15 +123,54 @@ namespace VisualCalculator
             if (file != null)
             {                
                 await CleanupCameraAsync();
+                
+                // Visibility change
+                previewControl.Visibility = _isPreviewing ? Visibility.Collapsed : Visibility.Visible;
+                photoButton.Visibility = Visibility.Collapsed;
+                imageControl.Visibility = Visibility.Visible;
 
-                var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read);
-                var image = new BitmapImage();
-
-                PreviewControl.Visibility = _isPreviewing ? Visibility.Collapsed : Visibility.Visible;
-                ImageControl.Visibility = Visibility.Visible;
-                image.SetSource(stream);
-                ImageControl.Source = image;
+                await LoadImage(file);
+                await CropImage();
             }
+        }
+
+        private async void photoButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            await TakePhotoAsync();
+            await CropImage();
+        }
+
+        // Handler for the ManipulationDelta event.
+        // ManipulationDelta data is loaded into the
+        // translation transform and applied to the Rectangle.
+        void touchRectangle_ManipulationDelta(object sender,
+            ManipulationDeltaRoutedEventArgs e)
+        {
+            // Move the rectangle.
+            _translateTransform.X += e.Delta.Translation.X;
+            _translateTransform.Y += e.Delta.Translation.Y;
+        }
+
+        private void touchRectangle_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            
+        }
+
+        private void touchRectangle_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            Rectangle rect = sender as Rectangle;
+
+            // Change the dimensions of the Rectangle.
+            if (null != rect)
+            {
+                rect.Width *= 1.05;
+                rect.Height *= 1.05;
+            }
+        }
+
+        private void touchRectangle_PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+            
         }
 
         #endregion Event handlers
@@ -153,7 +211,7 @@ namespace VisualCalculator
 
             try
             {
-                PreviewControl.Source = _mediaCapture;
+                previewControl.Source = _mediaCapture;
                 await _mediaCapture.StartPreviewAsync();
                 _isPreviewing = true;
             }
@@ -175,7 +233,7 @@ namespace VisualCalculator
 
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    PreviewControl.Source = null;
+                    previewControl.Source = null;
                     if (_displayRequest != null)
                     {
                         _displayRequest.RequestRelease();
@@ -188,9 +246,10 @@ namespace VisualCalculator
         }
 
         private async Task TakePhotoAsync()
-        {
+        {            
+            // Store the image
             var myPictures = await Windows.Storage.StorageLibrary.GetLibraryAsync(Windows.Storage.KnownLibraryId.Pictures);
-            StorageFile file = await myPictures.SaveFolder.CreateFileAsync("photo.jpg", CreationCollisionOption.GenerateUniqueName);
+            var file = await myPictures.SaveFolder.CreateFileAsync("photo.jpg", CreationCollisionOption.GenerateUniqueName);            
 
             using (var captureStream = new InMemoryRandomAccessStream())
             {
@@ -207,8 +266,34 @@ namespace VisualCalculator
                     await encoder.BitmapProperties.SetPropertiesAsync(properties);
 
                     await encoder.FlushAsync();
-                }
+                }                
             }
+
+            // Display the captured image
+            // Get information about the preview.
+            var previewProperties = _mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
+            int videoFrameWidth = (int)previewProperties.Width;
+            int videoFrameHeight = (int)previewProperties.Height;
+
+            // Create the video frame to request a SoftwareBitmap preview frame.
+            var videoFrame = new VideoFrame(BitmapPixelFormat.Bgra8, videoFrameWidth, videoFrameHeight);
+
+            // Capture the preview frame.
+            using (var currentFrame = await _mediaCapture.GetPreviewFrameAsync(videoFrame))
+            {
+                // Collect the resulting frame.
+                _bitmap = currentFrame.SoftwareBitmap;
+
+                var imgSource = new WriteableBitmap(_bitmap.PixelWidth, _bitmap.PixelHeight);
+
+                _bitmap.CopyToBuffer(imgSource.PixelBuffer);
+                imageControl.Source = imgSource;
+            }
+
+            // Visibility change
+            previewControl.Visibility = Visibility.Collapsed;
+            photoButton.Visibility = Visibility.Collapsed;
+            imageControl.Visibility = Visibility.Visible;
         }
 
         #endregion MediaCapture methods
@@ -231,7 +316,30 @@ namespace VisualCalculator
             }
         }
 
+        private async Task LoadImage(StorageFile file)
+        {
+            using (var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read))
+            {
+                var decoder = await BitmapDecoder.CreateAsync(stream);
+
+                _bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+                var imgSource = new WriteableBitmap(_bitmap.PixelWidth, _bitmap.PixelHeight);
+
+                _bitmap.CopyToBuffer(imgSource.PixelBuffer);
+                imageControl.Source = imgSource;
+            }
+        }
+
+        private async Task CropImage()
+        {
+            Debug.WriteLine("croping");
+        }
+
+
+
         #endregion Helper functions        
+
 
     }
 }
