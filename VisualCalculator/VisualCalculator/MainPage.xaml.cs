@@ -21,6 +21,7 @@ using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.System.Display;
 using Windows.UI.Core;
+using Windows.UI.Input;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -35,6 +36,12 @@ using Windows.UI.Xaml.Shapes;
 
 namespace VisualCalculator
 {
+    // 
+    public struct Coordinate
+    {
+        public double xPos;
+        public double yPos;       
+    }
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
@@ -42,7 +49,7 @@ namespace VisualCalculator
     {
         // MediaCapture and its state variables
         private MediaCapture _mediaCapture;     
-        private bool _isPreviewing;        
+        private bool _isPreviewing;
 
         // Bitmap holder of currently loaded image.
         private SoftwareBitmap _bitmap;
@@ -57,7 +64,27 @@ namespace VisualCalculator
         // Provide low-level details for each touch contact, 
         // including pointer motion and the ability to distinguish press and release events.
         //private PointerEventHandler _pointerEventHandler;
-          
+
+        // Polygon holder of currently created polygon
+        private Polygon _polygon;
+
+        // Crop is available
+        private bool _isCropping;
+
+        // X and Y coordinates of a polygon object
+        private PointerPoint _pt;
+        private Coordinate _orgPosTL;
+        private Coordinate _orgPosTR;
+        private Coordinate _orgPosBL;
+        private Coordinate _orgPosBR;
+
+        // new coorditates
+        private Coordinate _newPosTL;
+        private Coordinate _newPosTR;
+        private Coordinate _newPosBL;
+        private Coordinate _newPosBR;
+
+
         #region Constructor, lifecycle and navigation
 
         public MainPage()
@@ -65,19 +92,6 @@ namespace VisualCalculator
             this.InitializeComponent();
 
             Application.Current.Suspending += Application_Suspending;
-
-            // Listener for the ManipulationDelta event.
-            touchRectangle.ManipulationDelta += touchRectangle_ManipulationDelta;
-            // New translation transform populated in 
-            // the ManipulationDelta handler.
-            _translateTransform = new TranslateTransform();
-            // Apply the translation to the Rectangle.
-            touchRectangle.RenderTransform = this._translateTransform;
-
-            // Listener fot the PointerEvents event.
-            touchRectangle.PointerPressed += touchRectangle_PointerPressed;
-            touchRectangle.PointerMoved += touchRectangle_PointerMoved;
-            touchRectangle.PointerReleased += touchRectangle_PointerReleased;
         }
         
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
@@ -130,48 +144,54 @@ namespace VisualCalculator
                 imageControl.Visibility = Visibility.Visible;
 
                 await LoadImage(file);
-                await CropImage();
+                await LoadPolygon();
             }
         }
 
         private async void photoButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             await TakePhotoAsync();
-            await CropImage();
+            await LoadPolygon();
         }
 
         // Handler for the ManipulationDelta event.
         // ManipulationDelta data is loaded into the
         // translation transform and applied to the Rectangle.
-        void touchRectangle_ManipulationDelta(object sender,
-            ManipulationDeltaRoutedEventArgs e)
+        private void cropGrid_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
         {
             // Move the rectangle.
             _translateTransform.X += e.Delta.Translation.X;
             _translateTransform.Y += e.Delta.Translation.Y;
         }
 
-        private void touchRectangle_PointerPressed(object sender, PointerRoutedEventArgs e)
+        private void cropGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            _pt = e.GetCurrentPoint(this);
+
+            _orgPosTL.xPos = _pt.Position.X;
+            _orgPosTL.yPos = _pt.Position.Y;
+            _orgPosTR.xPos = _pt.Position.X + 200;
+            _orgPosTR.yPos = _pt.Position.Y;
+            _orgPosBL.xPos = _pt.Position.X;
+            _orgPosBL.yPos = _pt.Position.Y + 100;
+            _orgPosBR.xPos = _pt.Position.X + 200;
+            _orgPosBR.yPos = _pt.Position.Y + 100;
+            
+                                    
+            
+        }
+
+        private void cropGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
             
         }
 
-        private void touchRectangle_PointerMoved(object sender, PointerRoutedEventArgs e)
+        private void cropGrid_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            Rectangle rect = sender as Rectangle;
 
-            // Change the dimensions of the Rectangle.
-            if (null != rect)
-            {
-                rect.Width *= 1.05;
-                rect.Height *= 1.05;
-            }
         }
 
-        private void touchRectangle_PointerReleased(object sender, PointerRoutedEventArgs e)
-        {
-            
-        }
+   
 
         #endregion Event handlers
 
@@ -185,7 +205,8 @@ namespace VisualCalculator
             if (_mediaCapture == null)
             {
                 await StartPreviewAsync();
-            }            
+            }
+
         }
 
         /// <summary>
@@ -230,18 +251,25 @@ namespace VisualCalculator
                 {
                     await _mediaCapture.StopPreviewAsync();
                 }
-
+                
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    previewControl.Source = null;
+                    previewControl.Source = null;                    
                     if (_displayRequest != null)
                     {
                         _displayRequest.RequestRelease();
                     }
 
                     _mediaCapture.Dispose();
-                    _mediaCapture = null;
+                    _mediaCapture = null; 
                 });
+            }
+
+            if (_isCropping)
+            {
+                _isCropping = false;
+                cropGrid.Visibility = Visibility.Collapsed;
+                cropGrid.Children.Remove(_polygon);
             }
         }
 
@@ -331,12 +359,32 @@ namespace VisualCalculator
             }
         }
 
-        private async Task CropImage()
+        private async Task LoadPolygon()
         {
-            Debug.WriteLine("croping");
+            if (!_isCropping)
+            {
+                // Lock to create more polygons
+                _isCropping = true;
+
+                _polygon = new Polygon();
+                _polygon.Fill = new SolidColorBrush(Windows.UI.Colors.LightBlue);
+
+                var points = new PointCollection();
+                // Direction of points, TopLeft->TopRight->BottomRight->BottomLeft
+                points.Add(new Windows.Foundation.Point(_orgPosTL.xPos, _orgPosTL.yPos));
+                points.Add(new Windows.Foundation.Point(_orgPosTR.xPos, _orgPosTR.yPos));
+                points.Add(new Windows.Foundation.Point(_orgPosBR.xPos, _orgPosBR.yPos));
+                points.Add(new Windows.Foundation.Point(_orgPosBL.xPos, _orgPosBL.yPos));
+                _polygon.Points = points;
+
+                // When you create a XAML element in code, you have to add
+                // it to the XAML visual tree. This example assumes you have
+                // a panel named 'layoutRoot' in your XAML file, like this:
+                // <Grid x:Name="layoutRoot>
+                cropGrid.Visibility = Visibility.Visible;
+                cropGrid.Children.Add(_polygon);                
+            }
         }
-
-
 
         #endregion Helper functions        
 

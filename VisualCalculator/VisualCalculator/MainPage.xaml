@@ -4,7 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:VisualCalculator"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"    
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.Toolkit.Uwp.UI.Controls"
     mc:Ignorable="d">
 
     <Grid x:Name="rootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -21,16 +22,20 @@
             </CommandBar>
         </StackPanel>
 
-        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Background="LightSlateGray">
+        <!--View Control-->
+        <Grid x:Name="viewGrid" Grid.Row="1">
             <!--Camera Preview-->
             <CaptureElement x:Name="previewControl" Stretch="Uniform" Visibility="Visible" />
             <!--Image Preview-->
             <Image x:Name="imageControl" Stretch="Uniform" Visibility="Collapsed" />
-            <Rectangle x:Name="touchRectangle" Height="100" Width="200" Fill="AliceBlue"                
-                ManipulationMode="All"                
-                Visibility="Visible">
-            </Rectangle>
-
+            <!--Crop Control-->
+            <Grid x:Name="cropGrid" 
+                  PointerPressed="cropGrid_PointerPressed"
+                  PointerMoved="cropGrid_PointerMoved"
+                  PointerReleased="cropGrid_PointerReleased"
+                  ManipulationDelta="cropGrid_ManipulationDelta"
+                  Visibility="Collapsed"
+                  Background="LightPink"/>
         </Grid>
 
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="1" Background="LightCoral">
