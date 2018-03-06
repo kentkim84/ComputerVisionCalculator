@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage.Blob;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -32,6 +34,7 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Shapes;
 
+
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
 namespace VisualCalculator
@@ -47,6 +50,14 @@ namespace VisualCalculator
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        // Azure Storage Account and Key
+        private static readonly StorageCredentials _credentials = new StorageCredentials("croppedimagecontainer", "XZv/e2SVnzioIZWk3uVf3I1kBYuXK3cS07DcWQHPWkyZmbanHV+0YF/Ofm8agC4Juhl9bXygFxOU2/XptNOrtg==");
+        private static readonly CloudBlobContainer _container = new CloudBlobContainer(new Uri("http://croppedimagecontainer.blob.core.windows.net/imagescontainer/"), _credentials);
+        private static readonly CloudBlockBlob _blockBlob = _container.GetBlockBlobReference("imageBlob.jpg");
+        
+        // AWS S3 configuration
+
+
         // MediaCapture and its state variables
         private MediaCapture _mediaCapture;     
         private bool _isPreviewing;
@@ -150,7 +161,7 @@ namespace VisualCalculator
 
         private async void photoButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            await TakePhotoAsync();
+            await TakePhotoAsync();            
             await LoadPolygon();
         }
 
@@ -292,8 +303,11 @@ namespace VisualCalculator
                         { "System.Photo.Orientation", new BitmapTypedValue(PhotoOrientation.Normal, PropertyType.UInt16) }
                     };
                     await encoder.BitmapProperties.SetPropertiesAsync(properties);
-
                     await encoder.FlushAsync();
+
+                    // Upload an image blob to Azure storage
+                    await _blockBlob.DeleteIfExistsAsync();
+                    await _blockBlob.UploadFromFileAsync(file);              
                 }                
             }
 
@@ -384,6 +398,11 @@ namespace VisualCalculator
                 cropGrid.Visibility = Visibility.Visible;
                 cropGrid.Children.Add(_polygon);                
             }
+        }
+
+        private async Task UploadImage()
+        {
+            
         }
 
         #endregion Helper functions        
