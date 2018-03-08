@@ -17,8 +17,8 @@
         <StackPanel Background="LightGray">
             <!--Command-Bar Control-->
             <CommandBar HorizontalAlignment="Center">
-                <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="cameraButton_Tapped"/>
-                <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="fileButton_Tapped"/>
+                <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
+                <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
             </CommandBar>
         </StackPanel>
 
@@ -30,17 +30,18 @@
             <Image x:Name="imageControl" Stretch="Uniform" Visibility="Collapsed" />
             <!--Crop Control-->
             <Grid x:Name="cropGrid" 
-                  PointerPressed="cropGrid_PointerPressed"
-                  PointerMoved="cropGrid_PointerMoved"
-                  PointerReleased="cropGrid_PointerReleased"
-                  ManipulationDelta="cropGrid_ManipulationDelta"
+                  PointerPressed="CropGrid_PointerPressed"
+                  PointerMoved="CropGrid_PointerMoved"
+                  PointerReleased="CropGrid_PointerReleased"
+                  ManipulationDelta="CropGrid_ManipulationDelta"
                   Visibility="Collapsed"
-                  Background="LightPink"/>
+                  Background="LightPink">
+            </Grid>
         </Grid>
 
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="1" Background="LightCoral">
             <!--Camera Control-->
-            <Button x:Name="photoButton" Margin="0,0,20,0" Tapped="photoButton_Tapped" Visibility="Visible">
+            <Button x:Name="photoButton" Margin="0,0,20,0" Tapped="PhotoButton_Tapped" Visibility="Visible">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Grid>
