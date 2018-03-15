@@ -5,17 +5,18 @@
     xmlns:local="using:VisualCalculator"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:Microsoft.Toolkit.Uwp.UI.Controls"
+    xmlns:controls="using:Microsoft.Toolkit.Uwp.UI.Controls"    
     mc:Ignorable="d">
 
     <Grid x:Name="rootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <!--Grid initialisation-->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/> 
         </Grid.RowDefinitions>
 
-        <StackPanel Background="LightGray">
-            <!--Command-Bar Control-->
+        <!--Command-Bar Control-->
+        <StackPanel Grid.Row="0">
             <CommandBar HorizontalAlignment="Center">
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
@@ -23,41 +24,37 @@
         </StackPanel>
 
         <!--View Control-->
-        <Grid x:Name="viewGrid" Grid.Row="1">
-            <!--Camera Preview-->
-            <CaptureElement x:Name="previewControl" Stretch="Uniform" Visibility="Visible" />
-            <!--Image Preview-->
-            <Image x:Name="imageControl" Stretch="Uniform" Visibility="Collapsed" />
-            <!--Crop Control-->
-            <Grid x:Name="cropGrid" 
-                  PointerPressed="CropGrid_PointerPressed"
-                  PointerMoved="CropGrid_PointerMoved"
-                  PointerReleased="CropGrid_PointerReleased"
-                  ManipulationDelta="CropGrid_ManipulationDelta"
-                  Visibility="Collapsed"
-                  Background="LightPink">
-            </Grid>
-        </Grid>
-
-        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="1" Background="LightCoral">
+        <StackPanel x:Name="viewGrid" Grid.Row="1">
             <!--Camera Control-->
-            <Button x:Name="photoButton" Margin="0,0,20,0" Tapped="PhotoButton_Tapped" Visibility="Visible">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Viewbox MaxWidth="40" MaxHeight="40">
-                                <SymbolIcon Symbol="Camera"/>
-                            </Viewbox>
-                            <Ellipse Width="60" Height="60" Fill="Black" Opacity="0.3" />
-                        </Grid>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
+            <Grid x:Name="cameraGrid" Visibility="Visible" >
+                <!--Image Preview-->
+                <CaptureElement x:Name="previewControl" Stretch="Uniform" />
+                <Button x:Name="photoButton" Margin="0,0,20,0" HorizontalAlignment="Right" VerticalAlignment="Center" Tapped="PhotoButton_Tapped">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Viewbox MaxWidth="40" MaxHeight="40">
+                                    <SymbolIcon Symbol="Camera"/>
+                                </Viewbox>
+                                <Ellipse Width="60" Height="60" Fill="Black" Opacity="0.3" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!--Crop Control-->
+            <Grid x:Name="cropGrid" Visibility="Collapsed">
+                <!--Image Captured-->
+                <Image x:Name="imageControl" Stretch="Uniform">
+                    <!--<Image.Clip>
+                        <RectangleGeometry x:Name="clipControl"/>
+                    </Image.Clip>-->
+                </Image>
+                <!--Crop control will be here-->
+            </Grid>
         </StackPanel>
-
-        <!--Image-Cropping Control-->
-
-
+               
     </Grid>
 
 

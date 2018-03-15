@@ -1,4 +1,6 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
@@ -6,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
@@ -23,6 +26,7 @@ using Windows.Storage.FileProperties;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.System.Display;
+using Windows.UI.Composition;
 using Windows.UI.Core;
 using Windows.UI.Input;
 using Windows.UI.ViewManagement;
@@ -30,6 +34,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
+using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
@@ -49,24 +54,30 @@ namespace VisualCalculator
     public struct Coordinate
     {
         public double xPos;
-        public double yPos;       
+        public double yPos;
     }
+
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class MainPage : Page
     {
         // Azure Storage Account and Key                
+        // Blob name will be sent by http request
         private static readonly StorageCredentials _credentials = new StorageCredentials("objectdetection9a6d", "+8s9aGusj+5w5iBnXCdqE/OGV3qhLZZFfTrkZxVh+/hEX4cBEX9lRcywiY/q2O1BUuDIqtXQ5YrIV1og6JKotg==");
         private static readonly CloudBlobContainer _container = new CloudBlobContainer(new Uri("http://objectdetection9a6d.blob.core.windows.net/images-container"), _credentials);
         private static readonly CloudBlockBlob _blockBlob = _container.GetBlockBlobReference("imageBlob.jpg");
 
         // MediaCapture and its state variables
-        private MediaCapture _mediaCapture;     
+        private MediaCapture _mediaCapture;
         private bool _isPreviewing;
 
+        // Crop image and its state variables
+        private bool _isCropping;
+
         // Bitmap holder of currently loaded image.
-        private SoftwareBitmap _bitmap;
+        private SoftwareBitmap _softwareBitmap;
+        private WriteableBitmap _imgSource;
 
         // Prevent the screen from sleeping while the camera is running
         private readonly DisplayRequest _displayRequest = new DisplayRequest();
@@ -80,9 +91,12 @@ namespace VisualCalculator
         private Ellipse _ellipseTL;
         private Ellipse _ellipseBR;
         private Rectangle _rectangle;
+        private Rect _rect;
 
-        // Crop is available
-        private bool _isCropping;
+        
+
+        // Display size
+        private Size _size;
 
         // X and Y coordinates of a polygon object
         private PointerPoint _pt;
@@ -106,26 +120,32 @@ namespace VisualCalculator
             // Do not cache the state of the UI when suspending/navigating
             NavigationCacheMode = NavigationCacheMode.Disabled;
 
-            ApplicationView.PreferredLaunchViewSize = new Size(600, 500);
+            ApplicationView.PreferredLaunchViewSize = new Size(690, 540);
             ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.PreferredLaunchViewSize;
             Application.Current.Suspending += Application_Suspending;
+
+            // Get the display size
+            var bounds = ApplicationView.GetForCurrentView().VisibleBounds;
+            var scaleFactor = DisplayInformation.GetForCurrentView().RawPixelsPerViewPixel;
+            _size = new Size(bounds.Width * scaleFactor, bounds.Height * scaleFactor);            
         }
-        
+
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
         {
             // Handle global application events only if this page is active
             if (Frame.CurrentSourcePageType == typeof(MainPage))
             {
                 var deferral = e.SuspendingOperation.GetDeferral();
-                await InitializeCameraAsync();
+                await InitialiseCameraAsync();
                 deferral.Complete();
             }
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
-            await InitializeCameraAsync();
-        }
+            await InitialiseCameraAsync();
+            Window.Current.SizeChanged += Current_SizeChanged;
+        } 
 
         #endregion Constructor, lifecycle and navigation
 
@@ -134,25 +154,21 @@ namespace VisualCalculator
 
         private async void CameraButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // Visibility change
-            previewControl.Visibility = Visibility.Visible;
-            photoButton.Visibility = Visibility.Visible;
-            imageControl.Visibility = Visibility.Collapsed;
+            await InitialiseCameraAsync();
 
-            // Start previewing
-            await InitializeCameraAsync();            
+            // Visibility change
+            cameraGrid.Visibility = Visibility.Visible;
+            cropGrid.Visibility = Visibility.Collapsed;
+
+
+            Debug.WriteLine("_size: Width: {0}, Height: {1}", _size.Width, _size.Height);
+            Debug.WriteLine("viewGrid: Width: {0}, Height: {1}", viewGrid.Width, viewGrid.Height, viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+            Debug.WriteLine("viewGrid.RenderSize: Width: {0}, Height: {1}", viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+            Debug.WriteLine("viewGrid.RenderTransformOrigin: X: {0}, Y: {1}", viewGrid.RenderTransformOrigin.X, viewGrid.RenderTransformOrigin.Y);
         }
 
         private async void FileButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // Visibility change
-            previewControl.Visibility = Visibility.Collapsed;
-            photoButton.Visibility = Visibility.Collapsed;
-            imageControl.Visibility = Visibility.Visible;
-
-            // Stop priviewing while attemping to open the file
-            await CleanupPreviewAsync();
-
             var picker = new FileOpenPicker()
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary,
@@ -161,12 +177,22 @@ namespace VisualCalculator
 
             var file = await picker.PickSingleFileAsync();
             if (file != null)
-            {                
-                await LoadImage(file);                
+            {
+                await CleanupPreviewAndBitmapAsync();
+                await LoadImageAsync(file);
+
+                // Visibility change
+                cameraGrid.Visibility = Visibility.Collapsed;
+                cropGrid.Visibility = Visibility.Visible;
+
+                Debug.WriteLine("_size: Width: {0}, Height: {1}", _size.Width, _size.Height);
+                Debug.WriteLine("viewGrid: Width: {0}, Height: {1}", viewGrid.Width, viewGrid.Height, viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+                Debug.WriteLine("viewGrid.RenderSize: Width: {0}, Height: {1}", viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+                Debug.WriteLine("viewGrid.RenderTransformOrigin: X: {0}, Y: {1}", viewGrid.RenderTransformOrigin.X, viewGrid.RenderTransformOrigin.Y);
             }
 
             // Open cropping field
-            OpenCropField();
+            //OpenCropField();
         }
 
         private async void PhotoButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -174,12 +200,11 @@ namespace VisualCalculator
             await ProcessImageAsync();
 
             // Visibility change
-            previewControl.Visibility = Visibility.Collapsed;
-            photoButton.Visibility = Visibility.Collapsed;
-            imageControl.Visibility = Visibility.Visible;
+            cameraGrid.Visibility = Visibility.Collapsed;
+            cropGrid.Visibility = Visibility.Visible;
 
             // Open cropping field
-            OpenCropField();
+            //OpenCropField();
         }
 
         // Handler for the ManipulationDelta event.
@@ -192,7 +217,7 @@ namespace VisualCalculator
             _translateTransform.Y += e.Delta.Translation.Y;
         }
 
-        private void CropGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
+        private void CropButton_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             _pt = e.GetCurrentPoint(this);
 
@@ -204,31 +229,61 @@ namespace VisualCalculator
             _orgPosBL.yPos = _pt.Position.Y + 100;
             _orgPosBR.xPos = _pt.Position.X + 200;
             _orgPosBR.yPos = _pt.Position.Y + 100;
-            
-                                    
-            
+
+            // Pointer moved event added and pointer released removed
+            cropGrid.PointerMoved += CropButton_PointerMoved;
+            //cropGrid.PointerReleased -= CropButton_PointerReleased;
+
+            Debug.WriteLine("Start X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
+            Debug.WriteLine("X: {0}\nY: {1}\nWidth: {2}\nHeight: {3}", _rect.X, _rect.Y, _rect.Width, _rect.Height);
+
+
         }
 
-        private void CropGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
+        private void CropButton_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
-            
+            _pt = e.GetCurrentPoint(this);
+
+            // Off the size of grid, pointer moved event will be removed
+            if (_pt.Position.X < viewGrid.RenderTransformOrigin.X
+                || _pt.Position.Y < viewGrid.RenderTransformOrigin.Y
+                || _pt.Position.X > viewGrid.RenderSize.Width
+                || _pt.Position.Y > viewGrid.RenderSize.Height)
+            {
+                // Pointer moved event added and pointer released removed
+                cropGrid.PointerMoved -= CropButton_PointerMoved;
+                Debug.WriteLine("Out of rect!");
+            }
+
+            Debug.WriteLine("Current X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
         }
 
-        private void CropGrid_PointerReleased(object sender, PointerRoutedEventArgs e)
+        private void CropButton_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
+            _pt = e.GetCurrentPoint(this);
 
+            // Pointer moved event added and pointer released removed
+            cropGrid.PointerMoved -= CropButton_PointerMoved;
+
+            Debug.WriteLine("Last X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
         }
 
-   
+        private void Current_SizeChanged(object sender, WindowSizeChangedEventArgs e)
+        {
+            Debug.WriteLine("_size: Width: {0}, Height: {1}", _size.Width, _size.Height);
+            Debug.WriteLine("viewGrid: Width: {0}, Height: {1}", viewGrid.Width, viewGrid.Height, viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+            Debug.WriteLine("viewGrid.RenderSize: Width: {0}, Height: {1}", viewGrid.RenderSize.Width, viewGrid.RenderSize.Height);
+            Debug.WriteLine("viewGrid.RenderTransformOrigin: X: {0}, Y: {1}", viewGrid.RenderTransformOrigin.X, viewGrid.RenderTransformOrigin.Y);
+        }
 
         #endregion Event handlers
 
 
         #region MediaCapture methods
 
-        private async Task InitializeCameraAsync()
+        private async Task InitialiseCameraAsync()
         {
-            await CleanupPreviewAsync();
+            await CleanupPreviewAndBitmapAsync();
 
             if (_mediaCapture == null)
             {
@@ -244,10 +299,10 @@ namespace VisualCalculator
         private async Task StartPreviewAsync()
         {
             try
-            {                
+            {
                 _mediaCapture = new MediaCapture();
                 await _mediaCapture.InitializeAsync();
-
+                
                 // Prevent the device from sleeping while previewing
                 _displayRequest.RequestActive();
                 DisplayInformation.AutoRotationPreferences = DisplayOrientations.Landscape;
@@ -260,9 +315,9 @@ namespace VisualCalculator
             }
 
             try
-            {                
+            {
                 previewControl.Source = _mediaCapture;
-                                
+
                 await _mediaCapture.StartPreviewAsync();
                 _isPreviewing = true;
             }
@@ -273,7 +328,7 @@ namespace VisualCalculator
 
         }
 
-        private async Task CleanupPreviewAsync()
+        private async Task CleanupPreviewAndBitmapAsync()
         {
             if (_mediaCapture != null)
             {
@@ -281,11 +336,11 @@ namespace VisualCalculator
                 {
                     await _mediaCapture.StopPreviewAsync();
                 }
-                
+
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     // Cleanup the UI
-                    previewControl.Source = null;                    
+                    previewControl.Source = null;
                     if (_displayRequest != null)
                     {
                         // Allow the device screen to sleep now that the preview is stopped
@@ -294,47 +349,24 @@ namespace VisualCalculator
 
                     // Cleanup the media capture
                     _mediaCapture.Dispose();
-                    _mediaCapture = null; 
+                    _mediaCapture = null;
                 });
             }
 
-            if (_isCropping)
+            if (_softwareBitmap != null)
             {
-                // Unlock this cropping field
-                _isCropping = false;
-
-                // Visibility change
-                cropGrid.Visibility = Visibility.Collapsed;
-                cropGrid.Children.Remove(_polygon);
+                _softwareBitmap.Dispose();
+                _softwareBitmap = null;
             }
         }
 
         private async Task ProcessImageAsync()
-        {
+        {            
             // Display the captured image
             // Get information about the preview.
-            var previewProperties = _mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
-            int videoFrameWidth = (int)previewProperties.Width;
-            int videoFrameHeight = (int)previewProperties.Height;
-
-            // Create the video frame to request a SoftwareBitmap preview frame.
-            var videoFrame = new VideoFrame(BitmapPixelFormat.Bgra8, videoFrameWidth, videoFrameHeight);
-
-            // Capture the preview frame.
-            using (var currentFrame = await _mediaCapture.GetPreviewFrameAsync(videoFrame))
-            {
-                // Collect the resulting frame.
-                _bitmap = currentFrame.SoftwareBitmap;
-
-                var imgSource = new WriteableBitmap(_bitmap.PixelWidth, _bitmap.PixelHeight);
-
-                _bitmap.CopyToBuffer(imgSource.PixelBuffer);
-                imageControl.Source = imgSource;
-            }
-
-            // Store the image
+            // Store the image into my pictures folder
             var myPictures = await Windows.Storage.StorageLibrary.GetLibraryAsync(Windows.Storage.KnownLibraryId.Pictures);
-            var file = await myPictures.SaveFolder.CreateFileAsync("photo.jpg", CreationCollisionOption.GenerateUniqueName);            
+            var file = await myPictures.SaveFolder.CreateFileAsync("photo.jpg", CreationCollisionOption.GenerateUniqueName);
 
             using (var captureStream = new InMemoryRandomAccessStream())
             {
@@ -345,6 +377,13 @@ namespace VisualCalculator
                     var decoder = await BitmapDecoder.CreateAsync(captureStream);
                     var encoder = await BitmapEncoder.CreateForTranscodingAsync(fileStream, decoder);
 
+                    _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+                    _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
+
+                    _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
+                    imageControl.Source = _imgSource;
+                    
                     var properties = new BitmapPropertySet {
                         { "System.Photo.Orientation", new BitmapTypedValue(PhotoOrientation.Normal, PropertyType.UInt16) }
                     };
@@ -353,13 +392,27 @@ namespace VisualCalculator
 
                     // Upload an image blob to Azure storage
                     await _blockBlob.DeleteIfExistsAsync();
-                    await _blockBlob.UploadFromFileAsync(file);              
-                }                
-            }                        
+                    await _blockBlob.UploadFromFileAsync(file);
+                }
+            }
+        }
+
+        private async Task LoadImageAsync(StorageFile file)
+        {
+            using (var fileStream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read))
+            {
+                var decoder = await BitmapDecoder.CreateAsync(fileStream);
+
+                _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+                _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
+
+                _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
+                imageControl.Source = _imgSource;
+            }
         }
 
         #endregion MediaCapture methods
-
 
         #region Helper functions
 
@@ -378,31 +431,12 @@ namespace VisualCalculator
             }
         }
 
-        private async Task LoadImage(StorageFile file)
-        {
-            using (var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read))
-            {
-                var decoder = await BitmapDecoder.CreateAsync(stream);
-
-                _bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-
-                var imgSource = new WriteableBitmap(_bitmap.PixelWidth, _bitmap.PixelHeight);
-
-                _bitmap.CopyToBuffer(imgSource.PixelBuffer);
-                imageControl.Source = imgSource;
-            }
-        }
-
         private void OpenCropField()
         {
             if (!_isCropping)
             {
-                // Get the display size
-                var bounds = ApplicationView.GetForCurrentView().VisibleBounds;
-                var scaleFactor = DisplayInformation.GetForCurrentView().RawPixelsPerViewPixel;
-                var size = new Size(bounds.Width * scaleFactor, bounds.Height * scaleFactor);
-                var centerX = size.Width * 0.5;
-                var centerY = size.Height * 0.5;
+                var centerX = _size.Width * 0.5;
+                var centerY = _size.Height * 0.5;
 
                 // Lock this cropping field to create more polygons and ellipses
                 _isCropping = true;
@@ -412,49 +446,61 @@ namespace VisualCalculator
 
                 var points = new PointCollection();
                 // Direction of points, TopLeft->TopRight->BottomRight->BottomLeft
-                points.Add(new Windows.Foundation.Point(size.Width * 0.25, size.Height * 0.25));
-                points.Add(new Windows.Foundation.Point(size.Width * 0.75, size.Height * 0.25));
-                points.Add(new Windows.Foundation.Point(size.Width * 0.75, size.Height * 0.75));
-                points.Add(new Windows.Foundation.Point(size.Width * 0.25, size.Height * 0.75));
+                points.Add(new Windows.Foundation.Point(_size.Width * 0.25, _size.Height * 0.25));
+                points.Add(new Windows.Foundation.Point(_size.Width * 0.75, _size.Height * 0.25));
+                points.Add(new Windows.Foundation.Point(_size.Width * 0.75, _size.Height * 0.75));
+                points.Add(new Windows.Foundation.Point(_size.Width * 0.25, _size.Height * 0.75));
                 _polygon.Points = points;
-                          
+
                 _rectangle = new Rectangle();
-                _rectangle.Height = size.Height * 0.5;
-                _rectangle.Width = size.Width * 0.5;
-                _rectangle.Fill = new SolidColorBrush(Windows.UI.Colors.BlanchedAlmond);                
+                _rectangle.Height = _size.Height * 0.5;
+                _rectangle.Width = _size.Width * 0.5;
+                _rectangle.Fill = new SolidColorBrush(Windows.UI.Colors.BlanchedAlmond);
                 //_rectangle.Margin = new Thickness(size.Width * 0.25, size.Height * 0.25, 0, 0);                
 
                 _ellipseTL = new Ellipse();
                 _ellipseTL.Height = Constants.ELLIPSE_RADIIUS;
                 _ellipseTL.Width = Constants.ELLIPSE_RADIIUS;
                 _ellipseTL.Fill = new SolidColorBrush(Windows.UI.Colors.LightBlue);
-                _ellipseTL.Margin = new Thickness(-(size.Width * 0.5) , -(size.Height * 0.5), 0, 0);
+                _ellipseTL.Margin = new Thickness(-(_size.Width * 0.5), -(_size.Height * 0.5), 0, 0);
 
                 _ellipseBR = new Ellipse();
                 _ellipseBR.Height = Constants.ELLIPSE_RADIIUS;
                 _ellipseBR.Width = Constants.ELLIPSE_RADIIUS;
                 _ellipseBR.Fill = new SolidColorBrush(Windows.UI.Colors.LightGreen);
-                _ellipseBR.Margin = new Thickness((size.Width * 0.5), (size.Height * 0.5), 0, 0);
+                _ellipseBR.Margin = new Thickness((_size.Width * 0.5), (_size.Height * 0.5), 0, 0);
 
+                cropGrid.PointerPressed += CropButton_PointerPressed;
+                // pointer moved event will be added in the pointer pressed event
+                cropGrid.PointerReleased += CropButton_PointerReleased;
 
+                var cropButton = new Button();
+                cropButton.Background = new SolidColorBrush(Windows.UI.Colors.Transparent);
+                var symbolIcon = new SymbolIcon(Symbol.Crop);
+                symbolIcon.MinHeight = 16;
+                symbolIcon.MinWidth = 16;
+                cropButton.Margin = new Thickness((_size.Width * 0.75), (_size.Height * 0.5), 0, 0);
+
+                //cropButton.Content = symbolIcon;
 
                 // Visibility change
                 cropGrid.Visibility = Visibility.Visible;
                 //cropGrid.Children.Add(_polygon);
-                cropGrid.Children.Add(_rectangle);
-                cropGrid.Children.Add(_ellipseTL);
-                cropGrid.Children.Add(_ellipseBR);
+                //cropGrid.Children.Add(_rectangle);
+                //cropGrid.Children.Add(_ellipseTL);
+                //cropGrid.Children.Add(_ellipseBR);
+                //cropGrid.Children.Add(cropButton);                
+
+                _rect = new Rect();
+                _rect.X = centerX - (_size.Width * 0.5);
+                _rect.Y = centerY - (_size.Height * 0.5);
+                _rect.Width = _size.Width * 0.5;
+                _rect.Height = _size.Height * 0.5;
+                //clipControl.Rect = _rect;
             }
-
-        }
-
-        private async Task UploadImage()
-        {
-            
         }
 
         #endregion Helper functions        
-
 
     }
 }
