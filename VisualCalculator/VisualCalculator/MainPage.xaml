@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <!--Command-Bar Control-->
-        <StackPanel Grid.Row="0">
+        <StackPanel x:Name="commandBarPanel" Grid.Row="0">
             <CommandBar HorizontalAlignment="Center">
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
@@ -24,7 +24,7 @@
         </StackPanel>
 
         <!--View Control-->
-        <StackPanel x:Name="viewGrid" Grid.Row="1">
+        <StackPanel x:Name="viewPanel" Grid.Row="1">
             <!--Camera Control-->
             <Grid x:Name="cameraGrid" Visibility="Visible" >
                 <!--Image Preview-->
@@ -44,12 +44,12 @@
             </Grid>
 
             <!--Crop Control-->
-            <Grid x:Name="cropGrid" Visibility="Collapsed">
+            <Grid x:Name="cropGrid" Visibility="Collapsed" Background="Azure">
                 <!--Image Captured-->
                 <Image x:Name="imageControl" Stretch="Uniform">
-                    <!--<Image.Clip>
+                    <Image.Clip>
                         <RectangleGeometry x:Name="clipControl"/>
-                    </Image.Clip>-->
+                    </Image.Clip>
                 </Image>
                 <!--Crop control will be here-->
             </Grid>
