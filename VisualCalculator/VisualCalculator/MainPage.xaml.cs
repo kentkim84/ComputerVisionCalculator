@@ -47,14 +47,21 @@ namespace VisualCalculator
 {
     public static class Constants
     {
-        public const double ELLIPSE_RADIIUS = 10;
-
+        public const double ELLIPSE_RADIIUS = 10;       
     }
 
     public struct Coordinate
     {
         public double X;
         public double Y;
+    }
+
+    public struct Location
+    {
+        public double Top;
+        public double Bottom;
+        public double Left;
+        public double Right;
     }
 
     /// <summary>
@@ -83,6 +90,12 @@ namespace VisualCalculator
         // Prevent the screen from sleeping while the camera is running
         private readonly DisplayRequest _displayRequest = new DisplayRequest();
 
+        // Padding constant
+        private readonly int PADDING = 1;
+
+        // Movement scale constant
+        private readonly double MOVE_SCALE = 0.5;
+
         // Global translation transform used for changing the position of 
         // the Rectangle based on input data from the touch contact.
         private TranslateTransform _translateTransform;
@@ -105,17 +118,13 @@ namespace VisualCalculator
         private PointerPoint _pt;
         private Coordinate _orgPos;
         private Coordinate _movePos;
-
-        private Coordinate _orgPosTL;
-        private Coordinate _orgPosTR;
-        private Coordinate _orgPosBL;
-        private Coordinate _orgPosBR;
-
+        private Location _rectPos;
+       
         // new coorditates
         private Coordinate _newPosTL;
         private Coordinate _newPosTR;
         private Coordinate _newPosBL;
-        private Coordinate _newPosBR;
+        private Coordinate _newPosBR;        
 
         #region Constructor, lifecycle and navigation
 
@@ -196,102 +205,182 @@ namespace VisualCalculator
             OpenCropField();
         }
 
-        // Handler for the ManipulationDelta event.
-        // ManipulationDelta data is loaded into the
-        // translation transform and applied to the Rectangle.
-        private void CropGrid_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
-        {
-            // Move the rectangle.
-            _translateTransform.X += e.Delta.Translation.X;
-            _translateTransform.Y += e.Delta.Translation.Y;
-        }
-
-        private void CropButton_PointerPressed(object sender, PointerRoutedEventArgs e)
+        private void CropField_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             _pt = e.GetCurrentPoint(this);
 
+            // Set Original position
             _orgPos.X = _pt.Position.X;
             _orgPos.Y = _pt.Position.Y;
 
+            // Set Initial moved position
+            _movePos.X = _orgPos.X;
+            _movePos.Y = _orgPos.Y;
+
+            // Set Original rectangle position
+            //_rectPosTL.X = _rect.X;
+            //_rectPosTL.Y = _rect.Y;
+            //_rectPosBR.X = _rect.X + _rect.Width;
+            //_rectPosBR.Y = _rect.Y + _rect.Height;
+
             // Pointer moved event added and pointer released removed
-            cropGrid.PointerMoved += CropButton_PointerMoved;
-            //cropGrid.PointerReleased -= CropButton_PointerReleased;
+            cropGrid.PointerMoved += CropField_PointerMoved;
+            cropGrid.PointerReleased += CropField_PointerReleased;            
 
             Debug.WriteLine("\tOriginal Position X: {0} and Y: {1}", _orgPos.X, _orgPos.Y);            
         }
 
-        private void CropButton_PointerMoved(object sender, PointerRoutedEventArgs e)
-        {
+        private void CropField_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {            
             _pt = e.GetCurrentPoint(this);
 
-            // Off the size of grid, pointer moved event will be removed
-            if (_pt.Position.X > _orgPos.X || _pt.Position.Y > _orgPos.Y)
+            // Off the size of grid, pointer moved event will be removed            
+            if ((int)_pt.Position.Y > (int)_orgPos.Y) // Break point : below original Y-axis
             {
-                _movePos.X = _pt.Position.X - _orgPos.X;
-                _movePos.Y = _pt.Position.Y - _orgPos.Y;
-                Debug.WriteLine("Moved positive Position X: {0} and Y: {1}", _movePos.X, _movePos.Y);
-
-                if (_rect.X + _rect.Width + _movePos.X < _videoFrameWidth || 
-                    _rect.Y + _rect.Height + _movePos.Y < _videoFrameHeight + commandBarPanel.ActualHeight)
+                if ((_rectPos.Bottom = _rect.Y + _rect.Height) < _videoFrameHeight) // Check point : rectangle is still within the bottom of the frame
                 {
-                    
-                    //_rect.X = (_videoFrameWidth - centerX) * 0.5;
-                    //_rect.Y = (_videoFrameHeight - centerY) * 0.5;
-                    _rect.Height += 1;
-                    _rect.Width += 1;                    
-                    clipControl.SetValue(RectangleGeometry.RectProperty, _rect);
-
-                    //clipControl.Transform = new ScaleTransform
-                    //{
-                    //    CenterX = 0,
-                    //    CenterY = 0,
-                    //    ScaleX = 2,
-                    //    ScaleY = 2
-                    //};
-                    Debug.WriteLine("Still within Bound X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);                    
-                }
-                else
-                {                    
-                    cropGrid.PointerMoved -= CropButton_PointerMoved;
-                    Debug.WriteLine("Bound out!");
-                }
-            }
-            else if (_pt.Position.X < _orgPos.X || _pt.Position.Y < _orgPos.Y)
-            {
-                _movePos.X = _orgPos.X - _pt.Position.X;
-                _movePos.Y = _orgPos.Y - _pt.Position.Y;
-                Debug.WriteLine("Moved negative Position X: {0} and Y: {1}", _movePos.X, _movePos.Y);
-
-                if (_rect.X - _movePos.X > 0 ||
-                    _rect.Y - _movePos.Y > commandBarPanel.ActualHeight)
-                {
-
-                    //_rect.X = (_videoFrameWidth - _centerX) * 0.5;
-                    //_rect.Y = (_videoFrameHeight - _centerY) * 0.5;
-                    _rect.Height -= 1;
-                    _rect.Width -= 1;
-                    clipControl.SetValue(RectangleGeometry.RectProperty, _rect);
-                    //clipControl.Transform.TransformPoint(_pt.Position);
-                    //clipControl.Transform = new ScaleTransform {
-                    //    CenterX = 0,
-                    //    CenterY = 0,
-                    //};
-                    Debug.WriteLine("Still within Bound X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
+                    if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
+                    {
+                        if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                        {
+                            _rect.X += MOVE_SCALE;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Hit Right");
+                        }
+                        //Debug.WriteLine("3");
+                    }
+                    else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
+                    {
+                        if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the left-hand side of the frame
+                        {
+                            _rect.X -= MOVE_SCALE;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Hit Left");
+                        }
+                        //Debug.WriteLine("5");
+                    }
+                    _rect.Y += MOVE_SCALE;
                 }
                 else
                 {
-                    cropGrid.PointerMoved -= CropButton_PointerMoved;
-                    Debug.WriteLine("Bound out!");                    
+                    Debug.WriteLine("Hit Bottom");
                 }
             }
+            else if ((int)_pt.Position.Y < (int)_orgPos.Y) // Break point : above original Y-axis
+            {
+                if ((_rectPos.Top = _rect.Y) > 0) // Check point : rectangle is still within the top of the frame
+                {
+                    if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
+                    {
+                        if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                        {
+                            _rect.X += MOVE_SCALE;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Hit Right");
+                        }
+                        //Debug.WriteLine("1");
+                    }
+                    else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
+                    {
+                        if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
+                        {
+                            _rect.X -= MOVE_SCALE;
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Hit Left");
+                        }
+                        //Debug.WriteLine("7");
+                    }
+                    _rect.Y -= MOVE_SCALE;
+                }
+                else
+                {
+                    Debug.WriteLine("Hit Top");
+                }
+            }
+            else  // Break point : center of original Y-axis
+            {
+                if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
+                {
+                    if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                    {
+                        _rect.X += MOVE_SCALE;
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Hit Left");
+                    }
+                    //Debug.WriteLine("2");
+                }
+                else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
+                {
+                    if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
+                    {
+                        _rect.X -= MOVE_SCALE;
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Hit Right");
+                    }
+                    //Debug.WriteLine("6");
+                }
+                else // Break point : center of original X-axis
+                {
+                    Debug.WriteLine("Center");
+                }
+            }
+
+            //if (_rect.X - PADDING > 0
+            //    && _rect.Y - PADDING > commandBarPanel.ActualHeight
+            //    && _rect.X + _rect.Width + PADDING < _videoFrameWidth
+            //    && _rect.Y + _rect.Height + PADDING < _videoFrameHeight)
+            //{
+
+            //    Debug.WriteLine("Current Rect location LeftTop X: {0}, Y: {1}", (int)_rect.X, (int)_rect.Y);
+            //    Debug.WriteLine("Current Rect location RightBottom X: {0}, Y: {1}", (int)_rect.X+_rect.Width, (int)_rect.Y+_rect.Height);
+            //}
+            //else
+            //{
+            //    //imageControl.PointerMoved -= CropField_PointerMoved;
+            //    if (_rect.X - PADDING < 0)
+            //    {
+            //        _rect.X += 1;
+            //    }
+            //    else if (_rect.Y - PADDING < commandBarPanel.ActualHeight)
+            //    {
+            //        _rect.Y += 1;
+            //    }
+            //    else if (_rect.X + _rect.Width + PADDING > _videoFrameWidth)
+            //    {
+            //        _rect.X -= 1;
+            //    }
+            //    else if (_rect.Y + _rect.Height + PADDING > _videoFrameHeight)
+            //    {
+            //        _rect.Y -= 1;
+            //    }
+
+            //    cropGrid.PointerMoved -= CropField_PointerMoved;
+            //    Debug.WriteLine("Out of bound");
+            //}
+
+            clipControl.SetValue(RectangleGeometry.RectProperty, _rect);
+
+
         }
 
-        private void CropButton_PointerReleased(object sender, PointerRoutedEventArgs e)
+        private void CropField_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             _pt = e.GetCurrentPoint(this);
 
             // Pointer moved event added and pointer released removed
-            cropGrid.PointerMoved -= CropButton_PointerMoved;
+            cropGrid.PointerMoved -= CropField_PointerMoved;
 
             Debug.WriteLine("Last X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
         }
@@ -593,10 +682,14 @@ namespace VisualCalculator
                 _ellipseBR.Fill = new SolidColorBrush(Windows.UI.Colors.LightGreen);
                 _ellipseBR.Margin = new Thickness((_size.Width * 0.5), (_size.Height * 0.5), 0, 0);
 
-                cropGrid.PointerPressed += CropButton_PointerPressed;
-                // pointer moved event will be added in the pointer pressed event
-                cropGrid.PointerReleased += CropButton_PointerReleased;
 
+                // PointerPoint Evnents
+                // Start when cropfield is opened
+                // End when cropfield is closed
+
+                cropGrid.PointerPressed += CropField_PointerPressed;
+                //cropGrid.PointerMoved += CropButton_PointerMoved;                
+                
                 var cropButton = new Button();
                 cropButton.Background = new SolidColorBrush(Windows.UI.Colors.Transparent);
                 var symbolIcon = new SymbolIcon(Symbol.Crop);
@@ -607,7 +700,7 @@ namespace VisualCalculator
                 //cropButton.Content = symbolIcon;
 
                 // Visibility change
-                cropGrid.Visibility = Visibility.Visible;
+                //cropGrid.Visibility = Visibility.Visible;
                 //cropGrid.Children.Add(_polygon);
                 //cropGrid.Children.Add(_rectangle);
                 //cropGrid.Children.Add(_ellipseTL);
@@ -621,7 +714,7 @@ namespace VisualCalculator
                 _rect.Y = initialY;
                 _rect.Width = _videoFrameWidth * 0.5;
                 _rect.Height = _videoFrameHeight * 0.5;                
-                clipControl.Rect = _rect;
+                clipControl.Rect = _rect;                
 
                 Debug.WriteLine("\tRect Height: {0}, Width: {1}", _rect.Height, _rect.Width);
             }

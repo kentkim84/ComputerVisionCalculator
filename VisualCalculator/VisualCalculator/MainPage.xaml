@@ -44,7 +44,7 @@
             </Grid>
 
             <!--Crop Control-->
-            <Grid x:Name="cropGrid" Visibility="Collapsed" Background="Azure">
+            <Grid x:Name="cropGrid" Visibility="Collapsed">
                 <!--Image Captured-->
                 <Image x:Name="imageControl" Stretch="Uniform">
                     <Image.Clip>
