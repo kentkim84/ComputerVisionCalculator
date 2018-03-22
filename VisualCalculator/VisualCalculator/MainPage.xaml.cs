@@ -760,9 +760,14 @@ namespace VisualCalculator
             await _blockBlob.UploadFromFileAsync(file);
         }
 
-        private async Task SendHttpRequest(string base64String)
+        private static async Task SendHttpRequest(string base64String)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
+            var client = new HttpClient();
+            var resp = await client.GetAsync("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==&name=Yongjin");
+            var content = await resp.Content.ReadAsStringAsync();
+
+            Debug.WriteLine(content);
+            //HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
             //request.Method = "POST";
             //request.ContentType = "application/json";
             //Stream stream = request.GetRequestStream();
