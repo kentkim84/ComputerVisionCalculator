@@ -12,7 +12,8 @@
         <!--Grid initialisation-->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/> 
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!--Command-Bar Control-->
@@ -20,6 +21,9 @@
             <CommandBar HorizontalAlignment="Center">
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
+
+                <AppBarToggleButton x:Name="cropConfirmButton" Icon="Accept" Label="Accept" Tapped="cropConfirmButton_Tapped" Visibility="Collapsed"/>
+                <AppBarToggleButton x:Name="cropCancelButton" Icon="Cancel" Label="Calcel" Tapped="cropCancelButton_Tapped" Visibility="Collapsed"/>
             </CommandBar>
         </StackPanel>
 
@@ -47,14 +51,23 @@
             <Grid x:Name="cropGrid" Visibility="Collapsed">
                 <!--Image Captured-->
                 <Image x:Name="imageControl" Stretch="Uniform">
-                    <Image.Clip>
+                    <!--<Image.Clip>
                         <RectangleGeometry x:Name="clipControl"/>
-                    </Image.Clip>
+                    </Image.Clip>-->
                 </Image>
+                <Rectangle x:Name="rectangle" Width="100" Height="100" Fill="Beige" Opacity="0.3"
+                           ManipulationMode="TranslateX, TranslateY"
+                           ManipulationStarted="Rect_ManipulationStarted"
+                           ManipulationDelta="Rect_ManipulationDelta"
+                           ManipulationCompleted="Rect_ManipulationCompleted">
+                    <Rectangle.RenderTransform>
+                        <CompositeTransform x:Name="rectTransform"/>
+                    </Rectangle.RenderTransform>
+                </Rectangle>
                 <!--Crop control will be here-->
             </Grid>
+
         </StackPanel>
-               
     </Grid>
 
 

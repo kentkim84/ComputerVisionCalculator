@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
@@ -76,16 +78,16 @@ namespace VisualCalculator
         private static readonly CloudBlockBlob _blockBlob = _container.GetBlockBlobReference("imageBlob.jpg");
 
         // MediaCapture and its state variables
-        private MediaCapture _mediaCapture;
+        private MediaCapture _mediaCapture;        
         private VideoEncodingProperties _previewProperties;
-        private bool _isPreviewing;
+        private bool _isPreviewing;        
 
         // Crop image and its state variables
         private bool _isCropping;
 
-        // Bitmap holder of currently loaded image.
+        // Bitmap holder and Image stream
         private SoftwareBitmap _softwareBitmap;
-        //private WriteableBitmap _imgSource;
+        private WriteableBitmap _imgSource;        
 
         // Prevent the screen from sleeping while the camera is running
         private readonly DisplayRequest _displayRequest = new DisplayRequest();
@@ -105,7 +107,7 @@ namespace VisualCalculator
         private Ellipse _ellipseTL;
         private Ellipse _ellipseBR;
         private Rectangle _rectangle;
-        private Rect _rect;
+        private Rect _cropRect;
         
         // Display size
         private Size _size;
@@ -120,7 +122,7 @@ namespace VisualCalculator
         private Coordinate _movePos;
         private Location _rectPos;
        
-        // new coorditates
+        // New coorditates
         private Coordinate _newPosTL;
         private Coordinate _newPosTR;
         private Coordinate _newPosBL;
@@ -159,6 +161,7 @@ namespace VisualCalculator
         #endregion Constructor, lifecycle and navigation
 
 
+
         #region Event handlers
 
         private async void CameraButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -168,6 +171,8 @@ namespace VisualCalculator
             // Visibility change
             cameraGrid.Visibility = Visibility.Visible;
             cropGrid.Visibility = Visibility.Collapsed;
+            cropConfirmButton.Visibility = Visibility.Collapsed;
+            cropCancelButton.Visibility = Visibility.Collapsed;
         }
 
         private async void FileButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -187,6 +192,8 @@ namespace VisualCalculator
                 // Visibility change
                 cameraGrid.Visibility = Visibility.Collapsed;
                 cropGrid.Visibility = Visibility.Visible;
+                cropConfirmButton.Visibility = Visibility.Visible;
+                cropCancelButton.Visibility = Visibility.Visible;
 
                 // Open cropping field
                 OpenCropField();
@@ -200,6 +207,8 @@ namespace VisualCalculator
             // Visibility change
             cameraGrid.Visibility = Visibility.Collapsed;
             cropGrid.Visibility = Visibility.Visible;
+            cropConfirmButton.Visibility = Visibility.Visible;
+            cropCancelButton.Visibility = Visibility.Visible;
 
             // Open cropping field
             OpenCropField();
@@ -227,7 +236,7 @@ namespace VisualCalculator
             cropGrid.PointerMoved += CropField_PointerMoved;
             cropGrid.PointerReleased += CropField_PointerReleased;            
 
-            Debug.WriteLine("\tOriginal Position X: {0} and Y: {1}", _orgPos.X, _orgPos.Y);            
+            Debug.WriteLine("\tOriginal Position X: {0} and Y: {1}", _orgPos.X, _orgPos.Y);
         }
 
         private void CropField_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -237,13 +246,13 @@ namespace VisualCalculator
             // Off the size of grid, pointer moved event will be removed            
             if ((int)_pt.Position.Y > (int)_orgPos.Y) // Break point : below original Y-axis
             {
-                if ((_rectPos.Bottom = _rect.Y + _rect.Height) < _videoFrameHeight) // Check point : rectangle is still within the bottom of the frame
+                if ((_rectPos.Bottom = _cropRect.Y + _cropRect.Height) < _videoFrameHeight) // Check point : rectangle is still within the bottom of the frame
                 {
                     if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
                     {
-                        if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                        if ((_rectPos.Right = _cropRect.X + _cropRect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
                         {
-                            _rect.X += MOVE_SCALE;
+                            _cropRect.X += MOVE_SCALE;
                         }
                         else
                         {
@@ -253,9 +262,9 @@ namespace VisualCalculator
                     }
                     else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
                     {
-                        if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the left-hand side of the frame
+                        if ((_rectPos.Left = _cropRect.X) > 0) // Check point : rectangle is still within the left-hand side of the frame
                         {
-                            _rect.X -= MOVE_SCALE;
+                            _cropRect.X -= MOVE_SCALE;
                         }
                         else
                         {
@@ -263,7 +272,7 @@ namespace VisualCalculator
                         }
                         //Debug.WriteLine("5");
                     }
-                    _rect.Y += MOVE_SCALE;
+                    _cropRect.Y += MOVE_SCALE;
                 }
                 else
                 {
@@ -272,13 +281,13 @@ namespace VisualCalculator
             }
             else if ((int)_pt.Position.Y < (int)_orgPos.Y) // Break point : above original Y-axis
             {
-                if ((_rectPos.Top = _rect.Y) > 0) // Check point : rectangle is still within the top of the frame
+                if ((_rectPos.Top = _cropRect.Y) > 0) // Check point : rectangle is still within the top of the frame
                 {
                     if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
                     {
-                        if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                        if ((_rectPos.Right = _cropRect.X + _cropRect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
                         {
-                            _rect.X += MOVE_SCALE;
+                            _cropRect.X += MOVE_SCALE;
                         }
                         else
                         {
@@ -288,9 +297,9 @@ namespace VisualCalculator
                     }
                     else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
                     {
-                        if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
+                        if ((_rectPos.Left = _cropRect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
                         {
-                            _rect.X -= MOVE_SCALE;
+                            _cropRect.X -= MOVE_SCALE;
                         }
                         else
                         {
@@ -298,7 +307,7 @@ namespace VisualCalculator
                         }
                         //Debug.WriteLine("7");
                     }
-                    _rect.Y -= MOVE_SCALE;
+                    _cropRect.Y -= MOVE_SCALE;
                 }
                 else
                 {
@@ -309,9 +318,9 @@ namespace VisualCalculator
             {
                 if ((int)_pt.Position.X > (int)_orgPos.X) // Break point : right-hand side of original X-axis
                 {
-                    if ((_rectPos.Right = _rect.X + _rect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
+                    if ((_rectPos.Right = _cropRect.X + _cropRect.Width) < _videoFrameWidth) // Check point : rectangle is still within the right-hand side of the frame
                     {
-                        _rect.X += MOVE_SCALE;
+                        _cropRect.X += MOVE_SCALE;
                     }
                     else
                     {
@@ -321,9 +330,9 @@ namespace VisualCalculator
                 }
                 else if ((int)_pt.Position.X < (int)_orgPos.X) // Break point : left-hand side of original X-axis
                 {
-                    if ((_rectPos.Left = _rect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
+                    if ((_rectPos.Left = _cropRect.X) > 0) // Check point : rectangle is still within the right-hand side of the frame
                     {
-                        _rect.X -= MOVE_SCALE;
+                        _cropRect.X -= MOVE_SCALE;
                     }
                     else
                     {
@@ -335,44 +344,8 @@ namespace VisualCalculator
                 {
                     Debug.WriteLine("Center");
                 }
-            }
-
-            //if (_rect.X - PADDING > 0
-            //    && _rect.Y - PADDING > commandBarPanel.ActualHeight
-            //    && _rect.X + _rect.Width + PADDING < _videoFrameWidth
-            //    && _rect.Y + _rect.Height + PADDING < _videoFrameHeight)
-            //{
-
-            //    Debug.WriteLine("Current Rect location LeftTop X: {0}, Y: {1}", (int)_rect.X, (int)_rect.Y);
-            //    Debug.WriteLine("Current Rect location RightBottom X: {0}, Y: {1}", (int)_rect.X+_rect.Width, (int)_rect.Y+_rect.Height);
-            //}
-            //else
-            //{
-            //    //imageControl.PointerMoved -= CropField_PointerMoved;
-            //    if (_rect.X - PADDING < 0)
-            //    {
-            //        _rect.X += 1;
-            //    }
-            //    else if (_rect.Y - PADDING < commandBarPanel.ActualHeight)
-            //    {
-            //        _rect.Y += 1;
-            //    }
-            //    else if (_rect.X + _rect.Width + PADDING > _videoFrameWidth)
-            //    {
-            //        _rect.X -= 1;
-            //    }
-            //    else if (_rect.Y + _rect.Height + PADDING > _videoFrameHeight)
-            //    {
-            //        _rect.Y -= 1;
-            //    }
-
-            //    cropGrid.PointerMoved -= CropField_PointerMoved;
-            //    Debug.WriteLine("Out of bound");
-            //}
-
-            clipControl.SetValue(RectangleGeometry.RectProperty, _rect);
-
-
+            }            
+            //clipControl.SetValue(RectangleGeometry.RectProperty, _cropRect);
         }
 
         private void CropField_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -385,6 +358,29 @@ namespace VisualCalculator
             Debug.WriteLine("Last X: {0} and Y: {1}", _pt.Position.X, _pt.Position.Y);
         }
 
+
+        private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
+        {
+            rectangle.Opacity = 0.5;
+        }
+
+        private void Rect_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
+        {
+            //, PointerRoutedEventArgs e2
+            //_pt = e2.GetCurrentPoint(this);
+            // translate
+            rectTransform.TranslateX += e.Delta.Translation.X;
+            rectTransform.TranslateY += e.Delta.Translation.Y;
+            // scale
+            //rectTransform.ScaleX += 0.01;
+            //rectTransform.ScaleY += 0.01;
+        }
+
+        private void Rect_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
+        {
+            rectangle.Opacity = 0.3;
+        }
+
         private void Current_SizeChanged(object sender, WindowSizeChangedEventArgs e)
         {
             
@@ -394,7 +390,23 @@ namespace VisualCalculator
             Debug.WriteLine("\tviewPanel.RenderTransformOrigin: X: {0}, Y: {1}", viewPanel.RenderTransformOrigin.X, viewPanel.RenderTransformOrigin.Y);
         }
 
+        private async void cropConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // Start managing image source
+            await ManageImageSource(_imgSource);
+            
+            // Change visibility
+            cropConfirmButton.Visibility = Visibility.Collapsed;
+            cropCancelButton.Visibility = Visibility.Collapsed;
+        }
+
+        private void cropCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            Debug.WriteLine("Cancel");
+        }
+
         #endregion Event handlers
+
 
 
         #region MediaCapture methods
@@ -526,46 +538,7 @@ namespace VisualCalculator
         }
 
         private async Task CaptureImageAsync()
-        {
-            // Display the captured image
-            // Get information about the preview.
-            // Store the image into my pictures folder
-            //var myPictures = await Windows.Storage.StorageLibrary.GetLibraryAsync(Windows.Storage.KnownLibraryId.Pictures);
-            //var file = await myPictures.SaveFolder.CreateFileAsync("photo.jpg", CreationCollisionOption.GenerateUniqueName);
-
-            //using (var captureStream = new InMemoryRandomAccessStream())
-            //{
-            //    await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), captureStream);
-
-            //    using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
-            //    {
-            //        var decoder = await BitmapDecoder.CreateAsync(captureStream);
-            //        var encoder = await BitmapEncoder.CreateForTranscodingAsync(fileStream, decoder);
-
-            //        _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-
-            //        _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
-
-            //        _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
-            //        imageControl.Source = _imgSource;
-
-            //        var properties = new BitmapPropertySet {
-            //            { "System.Photo.Orientation", new BitmapTypedValue(PhotoOrientation.Normal, PropertyType.UInt16) }
-            //        };
-            //        await encoder.BitmapProperties.SetPropertiesAsync(properties);
-            //        await encoder.FlushAsync();
-
-            //        // Upload an image blob to Azure storage
-            //        await _blockBlob.DeleteIfExistsAsync();
-            //        await _blockBlob.UploadFromFileAsync(file);
-            //    }
-            //}
-
-            //Get information about the preview.
-            //_previewProperties = _mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
-            //_videoFrameWidth = (int)_previewProperties.Width;
-            //_videoFrameHeight = (int)_previewProperties.Height;
-
+        {                                    
             // Create the video frame to request a SoftwareBitmap preview frame.
             var videoFrame = new VideoFrame(BitmapPixelFormat.Bgra8, _videoFrameWidth, _videoFrameHeight);
 
@@ -581,10 +554,10 @@ namespace VisualCalculator
 
                 // private async Task<WriteableBitmap> ResizeWriteableBitmap(WriteableBitmap imgSource)
 
-                var imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
+                _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
 
-                _softwareBitmap.CopyToBuffer(imgSource.PixelBuffer);                
-                imageControl.Source = imgSource;
+                _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);                
+                imageControl.Source = _imgSource;
             }
         }
 
@@ -596,14 +569,16 @@ namespace VisualCalculator
 
                 _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
 
-                var imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
+                _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
 
-                _softwareBitmap.CopyToBuffer(imgSource.PixelBuffer);
-                imageControl.Source = imgSource;
+                _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
+                imageControl.Source = _imgSource;
             }
         }
 
         #endregion MediaCapture methods
+
+
 
         #region MediaEdit methods
 
@@ -625,6 +600,8 @@ namespace VisualCalculator
         }
 
         #endregion MediaEdit methods
+
+
 
         #region Helper functions
 
@@ -705,22 +682,97 @@ namespace VisualCalculator
                 //cropGrid.Children.Add(_rectangle);
                 //cropGrid.Children.Add(_ellipseTL);
                 //cropGrid.Children.Add(_ellipseBR);
-                //cropGrid.Children.Add(cropButton);                
-
-                _rect = new Rect();
+                //cropGrid.Children.Add(cropButton);     
+                
+                _cropRect = new Rect();
                 var initialX = (_videoFrameWidth - _centerX) * 0.5;
                 var initialY = (_videoFrameHeight - _centerY) * 0.5;
-                _rect.X = initialX;
-                _rect.Y = initialY;
-                _rect.Width = _videoFrameWidth * 0.5;
-                _rect.Height = _videoFrameHeight * 0.5;                
-                clipControl.Rect = _rect;                
+                _cropRect.X = initialX;
+                _cropRect.Y = initialY;
+                _cropRect.Width = _videoFrameWidth * 0.5;
+                _cropRect.Height = _videoFrameHeight * 0.5;                
+                //clipControl.Rect = _cropRect;                
 
-                Debug.WriteLine("\tRect Height: {0}, Width: {1}", _rect.Height, _rect.Width);
+                Debug.WriteLine("\tRect Height: {0}, Width: {1}", _cropRect.Height, _cropRect.Width);
             }
         }
 
-        #endregion Helper functions        
+        private void ResizeSoftwareBitmap()
+        {
+            // Create new WriteableBitmap to accommodate cropped image source
+            var croppedImgSource = new WriteableBitmap((int)_cropRect.Width, (int)_cropRect.Height);
+            // _softwareBitmap.
 
+        }
+
+        private async Task ManageImageSource(WriteableBitmap imageSource)
+        {
+            using (var stream = imageSource.PixelBuffer.AsStream())
+            {
+                var buffer = new byte[stream.Length];
+                await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                // Conver image to base64 string
+                var base64String = string.Empty;
+                base64String = await ImageToBase64(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
+
+                // Send http post request with base64 string to azure function
+                await SendHttpRequest(base64String);
+
+                // Store image file into local/remote storeages
+                await ManageFile(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
+            }                                         
+        }
+
+        private async Task<string> ImageToBase64(byte[] buffer, int width, int height)
+        {
+            using (var stream = new InMemoryRandomAccessStream())
+            {
+                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
+                // Save the image file with jpg extension 
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96.0, 96.0, buffer);
+                await encoder.FlushAsync();
+                return Convert.ToBase64String(buffer);
+            }
+        }
+
+        private async Task ManageFile(byte[] buffer, int width, int height)
+        {            
+            // Save the writeableBitmap object to JPG Image file 
+            var picker = new FileSavePicker();
+            picker.FileTypeChoices.Add("JPG File", new List<string>() { ".jpg" });
+            var file = await picker.PickSaveFileAsync();
+
+            using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {                
+                if (file == null)
+                {
+                    return;
+                }                
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, fileStream);
+                // Save the image file with jpg extension 
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96.0, 96.0, buffer);
+                await encoder.FlushAsync();                
+            }
+
+            // Upload an image blob to Azure storage
+            await _blockBlob.DeleteIfExistsAsync();
+            await _blockBlob.UploadFromFileAsync(file);
+        }
+
+        private async Task SendHttpRequest(string base64String)
+        {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
+            //request.Method = "POST";
+            //request.ContentType = "application/json";
+            //Stream stream = request.GetRequestStream();
+            //string json = "{\"name\": \"Azure\" }";
+            //byte[] buffer = Encoding.UTF8.GetBytes(json);
+            //stream.Write(buffer, 0, buffer.Length);
+            //HttpWebResponse res = (HttpWebResponse)request.GetResponse();
+
+        }
+
+        #endregion Helper functions           
     }
 }
