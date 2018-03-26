@@ -12,8 +12,10 @@ using System.Net;
 using System.Net.Http;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
+using Windows.Data.Json;
 using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -762,11 +764,15 @@ namespace VisualCalculator
 
         private static async Task SendHttpRequest(string base64String)
         {
-            var client = new HttpClient();
-            var resp = await client.GetAsync("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==&name=Yongjin");
-            var content = await resp.Content.ReadAsStringAsync();
+            var client = new HttpClient();            
+            var content = new StringContent("{ \"base64String\": \""+ base64String+"\" }", Encoding.UTF8, "application/json");            
+            //var resp = await client.PostAsync("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==", content);
+            var response = await client.PostAsync("http://localhost:7071/api/Function1", content);
+            var result = await response.Content.ReadAsStringAsync();
 
-            Debug.WriteLine(content);
+
+
+            Debug.WriteLine(result);
             //HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
             //request.Method = "POST";
             //request.ContentType = "application/json";
