@@ -79,6 +79,10 @@ namespace VisualCalculator
         private static readonly CloudBlobContainer _container = new CloudBlobContainer(new Uri("http://objectdetection9a6d.blob.core.windows.net/images-container"), _credentials);
         private static readonly CloudBlockBlob _blockBlob = _container.GetBlockBlobReference("imageBlob.jpg");
 
+        // Azure Functions URL
+        private static readonly string _detectObjectsURL = "https://objectrecognitionemgucv.azurewebsites.net/api/DetectObjects?code=ke2vGA4mMW/a73Ya09w5jr3oZSJaKnMDa3lTDWgbHuUYN4EaMi5LaQ==";
+        private static readonly string _trainClassifiersURL = "https://objectrecognitionemgucv.azurewebsites.net/api/TrainClassifiers?code=WZZC0bsnimD/dT7oC/DB4RewwC8Zu1KOKap87VtDDvCsdLnGrEBHow==";
+
         // MediaCapture and its state variables
         private MediaCapture _mediaCapture;        
         private VideoEncodingProperties _previewProperties;
@@ -714,14 +718,14 @@ namespace VisualCalculator
                 var buffer = new byte[stream.Length];
                 await stream.ReadAsync(buffer, 0, buffer.Length);
 
-                // Conver image to base64 string
+                // Convert image to base64 string
                 var base64String = string.Empty;
                 base64String = await ImageToBase64(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
 
                 // Send http post request with base64 string to azure function
                 await SendHttpRequest(base64String);
 
-                // Store image file into local/remote storeages
+                // Store image file into local/remote storage
                 await ManageFile(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
             }                                         
         }
@@ -765,9 +769,9 @@ namespace VisualCalculator
         private static async Task SendHttpRequest(string base64String)
         {
             var client = new HttpClient();            
-            var content = new StringContent("{ \"base64String\": \""+ base64String+"\" }", Encoding.UTF8, "application/json");            
-            //var resp = await client.PostAsync("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==", content);
-            var response = await client.PostAsync("http://localhost:7071/api/Function1", content);
+            var content = new StringContent("{ \"base64String\": \""+ base64String+"\" }", Encoding.UTF8, "application/json");
+            //var resp = await client.PostAsync(_detectObjectsURL, content);
+            var response = await client.PostAsync("http://localhost:7071/api/DetectObjects", content);
             var result = await response.Content.ReadAsStringAsync();
 
 
