@@ -72,7 +72,7 @@ namespace VisualCalculator
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class MainPage : Page
-    {
+    {        
         // Azure Storage Account and Key                
         // Blob name will be sent by http request
         private static readonly StorageCredentials _credentials = new StorageCredentials("objectdetection9a6d", "+8s9aGusj+5w5iBnXCdqE/OGV3qhLZZFfTrkZxVh+/hEX4cBEX9lRcywiY/q2O1BUuDIqtXQ5YrIV1og6JKotg==");
@@ -713,32 +713,33 @@ namespace VisualCalculator
 
         private async Task ManageImageSource(WriteableBitmap imageSource)
         {
-            using (var stream = imageSource.PixelBuffer.AsStream())
-            {
-                var buffer = new byte[stream.Length];
-                await stream.ReadAsync(buffer, 0, buffer.Length);
+            var buffer = imageSource.PixelBuffer.ToArray();
+            
+            // Convert image to base64 string
+            var base64String = string.Empty;
+            base64String = await ToBase64(buffer, (uint)imageSource.PixelWidth, (uint)imageSource.PixelHeight);
+            //CascadeClassifier classifierFace;
+            // Send http post request with base64 string to azure function
+            await SendHttpRequest(base64String);
 
-                // Convert image to base64 string
-                var base64String = string.Empty;
-                base64String = await ImageToBase64(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
-
-                // Send http post request with base64 string to azure function
-                await SendHttpRequest(base64String);
-
-                // Store image file into local/remote storage
-                await ManageFile(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
-            }                                         
+            // Store image file into local/remote storage
+            await ManageFile(buffer, imageSource.PixelWidth, imageSource.PixelHeight);
         }
 
-        private async Task<string> ImageToBase64(byte[] buffer, int width, int height)
+        private async Task<string> ToBase64(byte[] buffer, uint width, uint height)
         {
+            // Encode image buffer to base64 string
             using (var stream = new InMemoryRandomAccessStream())
             {
                 var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
                 // Save the image file with jpg extension 
-                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, (uint)width, (uint)height, 96.0, 96.0, buffer);
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, width, height, 96.0, 96.0, buffer);
                 await encoder.FlushAsync();
-                return Convert.ToBase64String(buffer);
+                // Read buffer
+                var bytes = new byte[stream.Size];
+                await stream.AsStream().ReadAsync(bytes, 0, bytes.Length);                
+
+                return Convert.ToBase64String(bytes);
             }
         }
 
@@ -762,21 +763,18 @@ namespace VisualCalculator
             }
 
             // Upload an image blob to Azure storage
-            await _blockBlob.DeleteIfExistsAsync();
-            await _blockBlob.UploadFromFileAsync(file);
+            //await _blockBlob.DeleteIfExistsAsync();
+            //await _blockBlob.UploadFromFileAsync(file);
         }
 
         private static async Task SendHttpRequest(string base64String)
         {
             var client = new HttpClient();            
             var content = new StringContent("{ \"base64String\": \""+ base64String+"\" }", Encoding.UTF8, "application/json");
-            //var resp = await client.PostAsync(_detectObjectsURL, content);
+            //var response = await client.PostAsync(_detectObjectsURL, content);
             var response = await client.PostAsync("http://localhost:7071/api/DetectObjects", content);
             var result = await response.Content.ReadAsStringAsync();
-
-
-
-            Debug.WriteLine(result);
+            
             //HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
             //request.Method = "POST";
             //request.ContentType = "application/json";
