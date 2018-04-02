@@ -80,8 +80,8 @@ namespace VisualCalculator
         private static readonly CloudBlockBlob _blockBlob = _container.GetBlockBlobReference("imageBlob.jpg");
 
         // Azure Functions URL
-        private static readonly string _detectObjectsURL = "https://objectrecognitionemgucv.azurewebsites.net/api/DetectObjects?code=ke2vGA4mMW/a73Ya09w5jr3oZSJaKnMDa3lTDWgbHuUYN4EaMi5LaQ==";
-        private static readonly string _trainClassifiersURL = "https://objectrecognitionemgucv.azurewebsites.net/api/TrainClassifiers?code=WZZC0bsnimD/dT7oC/DB4RewwC8Zu1KOKap87VtDDvCsdLnGrEBHow==";
+        private static readonly string _detectObjectsURL = "https://functionobjectdetector.azurewebsites.net/api/DetectObjects?code=5MGeisJftASX2DE/f5qD6mI9eGkErdxBq2KOzkQyh3AyNdFqgHTjZA==";
+        //private static readonly string _trainClassifiersURL = "https://objectrecognitionemgucv.azurewebsites.net/api/TrainClassifiers?code=WZZC0bsnimD/dT7oC/DB4RewwC8Zu1KOKap87VtDDvCsdLnGrEBHow==";
 
         // MediaCapture and its state variables
         private MediaCapture _mediaCapture;        
@@ -771,10 +771,12 @@ namespace VisualCalculator
         {
             var client = new HttpClient();            
             var content = new StringContent("{ \"base64String\": \""+ base64String+"\" }", Encoding.UTF8, "application/json");
-            //var response = await client.PostAsync(_detectObjectsURL, content);
-            var response = await client.PostAsync("http://localhost:7071/api/DetectObjects", content);
+            var response = await client.PostAsync(_detectObjectsURL, content);
+            //var response = await client.PostAsync("http://localhost:7071/api/DetectObjects", content);
             var result = await response.Content.ReadAsStringAsync();
-            
+
+
+            Debug.WriteLine(result);
             //HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://objectdetectionopencv.azurewebsites.net/api/DetectObjectsCSharp_v02?code=vpmvzhrlBrYsQQpqRvvVvD6muz6gaRPGgZ3SWTBCOwLNY6JIhXsPnA==");
             //request.Method = "POST";
             //request.ContentType = "application/json";
