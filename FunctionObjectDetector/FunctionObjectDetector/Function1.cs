@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Emgu.CV;
+using Emgu.CV.Structure;
 
 namespace FunctionObjectDetector
 {
@@ -34,8 +36,9 @@ namespace FunctionObjectDetector
             base64String = base64String ?? data?.base64String;
 
             // Setup Cascade Classifier            
-            //CascadeClassifier classifierFace;
-            //Rectangle[] faces;
+            CascadeClassifier classifierFace;
+            string cascadePath = string.Empty;
+            Rectangle[] faces;
 
             using (var ms = new MemoryStream())
             {
@@ -68,7 +71,7 @@ namespace FunctionObjectDetector
                                     foreach (string sss in Directory.GetDirectories(ss))
                                     {
                                         log.Info("\t\t\t\tDirectory: " + sss);
-
+                                        cascadePath = sss;
                                     }
 
                                 }
@@ -87,7 +90,7 @@ namespace FunctionObjectDetector
 
 
                 // Create cascade classifier
-                //classifierFace = new CascadeClassifier(@"D:\home\site\wwwroot\DetectObjects\haarcascade_frontalface_default.xml");
+                classifierFace = new CascadeClassifier(cascadePath);
                 //classifierFace = new CascadeClassifier(@"haarcascade_frontalface_default.xml");
             }
 
@@ -99,9 +102,9 @@ namespace FunctionObjectDetector
             using (var ms = new MemoryStream(bytes))
             {
                 Bitmap bitmap = new Bitmap(ms);
-                //Image<Bgr, byte> image = new Image<Bgr, byte>(bitmap);
-                //Image<Gray, byte> grayImage = image.Convert<Gray, byte>();
-                //faces = classifierFace.DetectMultiScale(grayImage, 1.1, 4);
+                Image<Bgr, byte> image = new Image<Bgr, byte>(bitmap);
+                Image<Gray, byte> grayImage = image.Convert<Gray, byte>();
+                faces = classifierFace.DetectMultiScale(grayImage, 1.1, 4);
 
                 //if (faces != null)
                 //{
@@ -109,9 +112,9 @@ namespace FunctionObjectDetector
                 //}
             }
 
-            return bytes == null
+            return faces == null
                 ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
-                : req.CreateResponse(HttpStatusCode.OK, "Face found: " + bytes.Length);
+                : req.CreateResponse(HttpStatusCode.OK, "Face found: " + faces.Length);
 
             //return base64String == null
             //    ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
