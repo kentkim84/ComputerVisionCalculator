@@ -1,0 +1,73 @@
+﻿<Page
+    x:Class="ComputerVision.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ComputerVision"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"    
+    mc:Ignorable="d">
+
+    <Grid x:Name="rootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <!--Grid initialisation-->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!--Command-Bar Control-->
+        <StackPanel x:Name="commandBarPanel" Grid.Row="0">
+            <CommandBar HorizontalAlignment="Center">
+                <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
+                <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
+
+                <AppBarToggleButton x:Name="cropConfirmButton" Icon="Accept" Label="Accept" Tapped="cropConfirmButton_Tapped" Visibility="Collapsed"/>
+                <AppBarToggleButton x:Name="cropCancelButton" Icon="Cancel" Label="Calcel" Tapped="cropCancelButton_Tapped" Visibility="Collapsed"/>
+            </CommandBar>
+        </StackPanel>
+
+        <!--View Control-->
+        <StackPanel x:Name="viewPanel" Grid.Row="1">
+            <!--Camera Control-->
+            <Grid x:Name="cameraGrid" Visibility="Visible" >
+                <!--Image Preview-->
+                <CaptureElement x:Name="previewControl" Stretch="Uniform" />
+                <Button x:Name="photoButton" Margin="0,0,20,0" HorizontalAlignment="Right" VerticalAlignment="Center" Tapped="PhotoButton_Tapped">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Viewbox MaxWidth="40" MaxHeight="40">
+                                    <SymbolIcon Symbol="Camera"/>
+                                </Viewbox>
+                                <Ellipse Width="60" Height="60" Fill="Black" Opacity="0.3" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!--Crop Control-->
+            <Grid x:Name="cropGrid" Visibility="Collapsed">
+                <!--Image Captured-->
+                <Image x:Name="imageControl" Stretch="Uniform">
+                    <!--<Image.Clip>
+                        <RectangleGeometry x:Name="clipControl"/>
+                    </Image.Clip>-->
+                </Image>
+                <Rectangle x:Name="rectangle" Width="100" Height="100" Fill="Beige" Opacity="0.3"
+                           ManipulationMode="TranslateX, TranslateY"
+                           ManipulationStarted="Rect_ManipulationStarted"
+                           ManipulationDelta="Rect_ManipulationDelta"
+                           ManipulationCompleted="Rect_ManipulationCompleted">
+                    <Rectangle.RenderTransform>
+                        <CompositeTransform x:Name="rectTransform"/>
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <!--Crop control will be here-->
+            </Grid>
+
+        </StackPanel>
+    </Grid>
+
+
+</Page>

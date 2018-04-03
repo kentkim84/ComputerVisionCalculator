@@ -3,6 +3,8 @@
     <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Accord.Vision" Version="3.8.0" />
+    <PackageReference Include="EMGU.CV" Version="3.3.0.2824" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.12" />
   </ItemGroup>
   <ItemGroup>
