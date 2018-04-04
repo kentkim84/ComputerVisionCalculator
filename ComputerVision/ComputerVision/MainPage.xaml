@@ -73,7 +73,7 @@
         </StackPanel>
 
         <StackPanel Background="LightGoldenrodYellow" Grid.Row="1" Grid.Column="1">
-            <GridView ItemsSource="{x:Bind ViewModel.Recordings}">
+            <!--<GridView ItemsSource="{x:Bind ViewModel.Recordings}">
                 <GridView.ItemTemplate>
                     <DataTemplate x:Name="ImageTextDataTemplate" x:DataType="local:Recording">
                         <StackPanel Height="280" Width="180" Margin="12" AutomationProperties.Name="{x:Bind CompositionName}">
@@ -90,7 +90,7 @@
                         <ItemsWrapGrid MaximumRowsOrColumns="10" Orientation="Horizontal"/>
                     </ItemsPanelTemplate>
                 </GridView.ItemsPanel>
-            </GridView>
+            </GridView>-->
         </StackPanel>
     </Grid>
 </Page>

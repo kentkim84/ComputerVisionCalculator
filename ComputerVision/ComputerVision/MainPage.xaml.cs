@@ -154,8 +154,9 @@ namespace ComputerVision
             // Start managing image source
             // Get image analysis as string
             var imageAnalysis = await MakeAnalysisRequest(_byteData);
-            var result = BingImageSearch(imageAnalysis);
-            // Do somthing with result
+            var searchResult = BingImageSearch(imageAnalysis);
+
+            ProcessSearchResult(searchResult);
             // Change visibility
             processConfirmButton.Visibility = Visibility.Collapsed;
             processCancelButton.Visibility = Visibility.Collapsed;
@@ -398,59 +399,22 @@ namespace ComputerVision
 
                 return ProcessJsonContent(contentString);
             }
-        }
-        private static string ProcessJsonContent(string contentString)
+        }        
+        private static string ProcessJsonContent(string jsonContent)
         {
-            if (string.IsNullOrEmpty(contentString))
+            if (string.IsNullOrEmpty(jsonContent))
                 return string.Empty;
 
             // Get tags and captions
-            JObject analysis = JObject.Parse(contentString);            
-            //JArray tags = (JArray)analysis["description"]["tags"];
-            IList<JToken> tags = analysis["description"]["tags"].Children().ToList();
-            //JArray captions = (JArray)analysis["description"]["captions"];
-            IList<JToken> captions = analysis["description"]["captions"].Children().ToList();
-
-            string result = (string)captions[0]["text"];
-
-            //IList<string> tagsList = tags.Select(c => (string)c).ToList();
-
-            //foreach (string t in tagsList)
-            //{
-            //    Debug.WriteLine("Tags: {0}",t);
-            //}
-
-            //IList<JObject> captionsList = captions.Select(c => (JObject)c).ToList();
-
-            //foreach (JObject j in captionsList)
-            //{
-            //    string text = (string)j["text"];
-            //    long confidence = (long)j["confidence"];
-
-            //    Debug.WriteLine("Captions - Text: {0}, Confidence: {1}", text, confidence);
-            //}
-
-            //foreach (Category c in categories)
-            //{
-            //    Debug.WriteLine("Categories: \n\tName: {0}, Score: {1}", c.Name, c.Score);
-            //}
-
-            //foreach (string s in description.Tags)
-            //{
-            //    Debug.WriteLine("Description-Tags: \n\tTags: {0}", s);
-            //}
-            //foreach (Caption c in description.Captions)
-            //{
-            //    Debug.WriteLine("Description-Captions: \n\tText: {0}, Confidence: {1}", c.Text, c.Confidence);
-            //}
-
-            //return description.GetCaptions();
+            JObject jObject = JObject.Parse(jsonContent);
+            IList<JToken> jArray = jObject["description"]["captions"].Children().ToList();                                    
+            var result = (string)jArray[0]["text"];
+            
             Debug.WriteLine(result);
             return result;
-        }
-        
+        }        
         // Performs a Bing Image search and return the results as a SearchResult.        
-        private static SearchResult BingImageSearch(string searchQuery)
+        private static string BingImageSearch(string searchQuery)
         {
             // Construct the URI of the search request
             var uriQuery = uriBaseBing + "?q=" + Uri.EscapeDataString(searchQuery);
@@ -479,10 +443,39 @@ namespace ComputerVision
             foreach (var header in searchResult.relevantHeaders)
                 Debug.WriteLine(header.Key + ": " + header.Value);
 
-            Debug.WriteLine("\nJSON Response:\n");
-            Debug.WriteLine(JsonPrettyPrintBing(searchResult.jsonResult));
+            //Debug.WriteLine("\nJSON Response:\n");
+            //Debug.WriteLine(JsonPrettyPrintBing(searchResult.jsonResult));
 
-            return searchResult;
+            return searchResult.jsonResult;
+        }
+        private static void ProcessSearchResult(string searchResult)
+        {                        
+            JObject jObject = JObject.Parse(searchResult);
+            IList<JToken> jArray = jObject["value"].Children().ToList();
+
+            List<ImageResource> imageResources = new List<ImageResource>();
+
+            // Retrieve elements from the value
+            foreach (JToken t in jArray)
+            {                                
+                // need to create list<ImageResource>
+                var imageResource = new ImageResource()
+                {
+                    Name = (string)t["name"],
+                    ThumbnailUrl = (string)t["thumbnailUrl"],
+                    ContentUrl = (string)t["contentUrl"],
+                    HostPageUrl = (string)t["hostPageUrl"]
+                };
+
+                // Add item into List
+                imageResources.Add(imageResource);               
+            }
+
+            foreach (ImageResource i in imageResources)
+            {
+                Debug.WriteLine("Value - Name: {0}, Thumb: {1}, ContUrl: {2}, HostUrl: {3}", i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl);
+            }
+
         }
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
@@ -617,13 +610,6 @@ namespace ComputerVision
 
         #endregion Helper functions
 
-
-
-        #region Objects
-
-        
-
-        #endregion Objects
     }
     static class Extensions
     {
@@ -635,36 +621,11 @@ namespace ComputerVision
             }
         }
     }
-    public class Analysis
+    public class ImageResource
     {
-        [JsonProperty("categories")]
-        internal List<Category> Categories { get; set; }
-        [JsonProperty("description")]
-        internal Description Description { get; set; }
-    }
-    internal class Category
-    {
-        [JsonProperty("name")]
         public string Name { get; set; }
-        [JsonProperty("score")]
-        public long Score { get; set; }
-    }
-    internal class Description
-    {
-        [JsonProperty("tags")]
-        public string[] Tags { get; set; }
-        [JsonProperty("captions")]
-        internal List<Caption> Captions { get; set; }
-        public string GetCaptions()
-        {
-            return Captions.ToString();
-        }
-    }
-    internal class Caption
-    {
-        [JsonProperty("text")]
-        public string Text { get; set; }
-        [JsonProperty("confidence")]
-        public long Confidence { get; set; }
-    }
+        public string ThumbnailUrl { get; set; }
+        public string ContentUrl { get; set; }
+        public string HostPageUrl { get; set; }
+    }  
 }
