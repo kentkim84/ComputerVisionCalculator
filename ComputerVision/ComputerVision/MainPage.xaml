@@ -14,9 +14,13 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*"/>
+            <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
 
         <!--Command-Bar Control-->
-        <StackPanel x:Name="commandBarPanel" Grid.Row="0">
+        <StackPanel x:Name="commandBarPanel" Grid.Row="0" Grid.ColumnSpan="2">
             <CommandBar HorizontalAlignment="Center">
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
@@ -27,7 +31,7 @@
         </StackPanel>
 
         <!--View Control-->
-        <StackPanel x:Name="viewPanel" Grid.Row="1">
+        <StackPanel x:Name="viewPanel" Grid.Row="1" Grid.Column="0">
             <!--Camera Control-->
             <Grid x:Name="cameraGrid" Visibility="Visible" >
                 <!--Image Preview-->
@@ -66,6 +70,27 @@
                 <!--Crop control will be here-->
             </Grid>
 
+        </StackPanel>
+
+        <StackPanel Background="LightGoldenrodYellow" Grid.Row="1" Grid.Column="1">
+            <GridView ItemsSource="{x:Bind ViewModel.Recordings}">
+                <GridView.ItemTemplate>
+                    <DataTemplate x:Name="ImageTextDataTemplate" x:DataType="local:Recording">
+                        <StackPanel Height="280" Width="180" Margin="12" AutomationProperties.Name="{x:Bind CompositionName}">
+                            <Image Source="Placeholder.png" Height="180" Width="180" Stretch="UniformToFill"/>
+                            <StackPanel Margin="0,12">
+                                <TextBlock Text="{x:Bind CompositionName}"/>
+                                <TextBlock Text="{x:Bind ArtistName}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+                <GridView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ItemsWrapGrid MaximumRowsOrColumns="10" Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </GridView.ItemsPanel>
+            </GridView>
         </StackPanel>
     </Grid>
 </Page>

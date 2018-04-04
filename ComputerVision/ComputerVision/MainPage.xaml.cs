@@ -30,6 +30,9 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -152,6 +155,7 @@ namespace ComputerVision
             // Get image analysis as string
             var imageAnalysis = await MakeAnalysisRequest(_byteData);
             var result = BingImageSearch(imageAnalysis);
+            // Do somthing with result
             // Change visibility
             processConfirmButton.Visibility = Visibility.Collapsed;
             processCancelButton.Visibility = Visibility.Collapsed;
@@ -386,20 +390,63 @@ namespace ComputerVision
                 response = await client.PostAsync(uri, content);
 
                 // Get the JSON response.
-                string contentString = await response.Content.ReadAsStringAsync();
-
+                var contentString = await response.Content.ReadAsStringAsync();
+                
                 // Display the JSON response.
-                Debug.WriteLine("\nResponse:\n");
-                Debug.WriteLine(JsonPrettyPrintCV(contentString));                
+                //Debug.WriteLine("\nResponse:\n");
+                //Debug.WriteLine(JsonPrettyPrintCV(contentString));                
 
                 return ProcessJsonContent(contentString);
             }
         }
-
         private static string ProcessJsonContent(string contentString)
         {
+            if (string.IsNullOrEmpty(contentString))
+                return string.Empty;
 
-            return "Dobgs";
+            // Get tags and captions
+            JObject analysis = JObject.Parse(contentString);            
+            //JArray tags = (JArray)analysis["description"]["tags"];
+            IList<JToken> tags = analysis["description"]["tags"].Children().ToList();
+            //JArray captions = (JArray)analysis["description"]["captions"];
+            IList<JToken> captions = analysis["description"]["captions"].Children().ToList();
+
+            string result = (string)captions[0]["text"];
+
+            //IList<string> tagsList = tags.Select(c => (string)c).ToList();
+
+            //foreach (string t in tagsList)
+            //{
+            //    Debug.WriteLine("Tags: {0}",t);
+            //}
+
+            //IList<JObject> captionsList = captions.Select(c => (JObject)c).ToList();
+
+            //foreach (JObject j in captionsList)
+            //{
+            //    string text = (string)j["text"];
+            //    long confidence = (long)j["confidence"];
+
+            //    Debug.WriteLine("Captions - Text: {0}, Confidence: {1}", text, confidence);
+            //}
+
+            //foreach (Category c in categories)
+            //{
+            //    Debug.WriteLine("Categories: \n\tName: {0}, Score: {1}", c.Name, c.Score);
+            //}
+
+            //foreach (string s in description.Tags)
+            //{
+            //    Debug.WriteLine("Description-Tags: \n\tTags: {0}", s);
+            //}
+            //foreach (Caption c in description.Captions)
+            //{
+            //    Debug.WriteLine("Description-Captions: \n\tText: {0}, Confidence: {1}", c.Text, c.Confidence);
+            //}
+
+            //return description.GetCaptions();
+            Debug.WriteLine(result);
+            return result;
         }
         
         // Performs a Bing Image search and return the results as a SearchResult.        
@@ -501,7 +548,7 @@ namespace ComputerVision
             }
             return sb.ToString();
         }
-        static string JsonPrettyPrintBing(string json)
+        private static string JsonPrettyPrintBing(string json)
         {
             if (string.IsNullOrEmpty(json))
                 return string.Empty;
@@ -569,6 +616,14 @@ namespace ComputerVision
         }
 
         #endregion Helper functions
+
+
+
+        #region Objects
+
+        
+
+        #endregion Objects
     }
     static class Extensions
     {
@@ -579,5 +634,37 @@ namespace ComputerVision
                 action(i);
             }
         }
+    }
+    public class Analysis
+    {
+        [JsonProperty("categories")]
+        internal List<Category> Categories { get; set; }
+        [JsonProperty("description")]
+        internal Description Description { get; set; }
+    }
+    internal class Category
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
+        [JsonProperty("score")]
+        public long Score { get; set; }
+    }
+    internal class Description
+    {
+        [JsonProperty("tags")]
+        public string[] Tags { get; set; }
+        [JsonProperty("captions")]
+        internal List<Caption> Captions { get; set; }
+        public string GetCaptions()
+        {
+            return Captions.ToString();
+        }
+    }
+    internal class Caption
+    {
+        [JsonProperty("text")]
+        public string Text { get; set; }
+        [JsonProperty("confidence")]
+        public long Confidence { get; set; }
     }
 }
