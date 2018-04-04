@@ -21,8 +21,8 @@
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
 
-                <AppBarToggleButton x:Name="cropConfirmButton" Icon="Accept" Label="Accept" Tapped="cropConfirmButton_Tapped" Visibility="Collapsed"/>
-                <AppBarToggleButton x:Name="cropCancelButton" Icon="Cancel" Label="Calcel" Tapped="cropCancelButton_Tapped" Visibility="Collapsed"/>
+                <AppBarToggleButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
+                <AppBarToggleButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>
             </CommandBar>
         </StackPanel>
 

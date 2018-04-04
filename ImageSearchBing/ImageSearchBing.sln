@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2011
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageSearchBing", "ImageSearchBing\ImageSearchBing.csproj", "{D69C4A2B-10D5-48C9-87CF-83B64AA624CD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D69C4A2B-10D5-48C9-87CF-83B64AA624CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D69C4A2B-10D5-48C9-87CF-83B64AA624CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D69C4A2B-10D5-48C9-87CF-83B64AA624CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D69C4A2B-10D5-48C9-87CF-83B64AA624CD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B600C019-FA03-47BE-BE2E-5237DA4E3C5C}
+	EndGlobalSection
+EndGlobal

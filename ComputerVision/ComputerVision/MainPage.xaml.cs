@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -41,8 +42,10 @@ namespace ComputerVision
     {
         // Microsoft cognitive service - Computer Vision
         // The subscriptionKey string key and the uri base have to be in the same region
-        const string subscriptionKey = "4667d551d2504931b6cd71ffdea1118e";
-        const string uriBase = "https://westeurope.api.cognitive.microsoft.com/vision/v1.0/analyze";
+        private const string accesskeyCV = "4667d551d2504931b6cd71ffdea1118e";
+        private const string accessKeyBing = "a84ffb2e1cb04405b880896c239b998a";
+        private const string uriBaseCV = "https://westeurope.api.cognitive.microsoft.com/vision/v1.0/analyze";
+        private const string uriBaseBing = "https://api.cognitive.microsoft.com/bing/v7.0/images/search";
 
         // MediaCapture and its state variables
         private MediaCapture _mediaCapture;
@@ -62,6 +65,13 @@ namespace ComputerVision
 
         // Image byte array
         private byte[] _byteData;
+
+        // Used to return image search results including relevant headers
+        struct SearchResult
+        {
+            public String jsonResult;
+            public Dictionary<String, String> relevantHeaders;
+        }
 
 
 
@@ -101,8 +111,8 @@ namespace ComputerVision
             // Visibility change
             cameraGrid.Visibility = Visibility.Visible;
             cropGrid.Visibility = Visibility.Collapsed;
-            cropConfirmButton.Visibility = Visibility.Collapsed;
-            cropCancelButton.Visibility = Visibility.Collapsed;
+            processConfirmButton.Visibility = Visibility.Collapsed;
+            processCancelButton.Visibility = Visibility.Collapsed;
         }
         private async void FileButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
@@ -122,11 +132,8 @@ namespace ComputerVision
                 // Visibility change
                 cameraGrid.Visibility = Visibility.Collapsed;
                 cropGrid.Visibility = Visibility.Visible;
-                cropConfirmButton.Visibility = Visibility.Visible;
-                cropCancelButton.Visibility = Visibility.Visible;
-
-                // Open cropping field
-                //OpenCropField();
+                processConfirmButton.Visibility = Visibility.Visible;
+                processCancelButton.Visibility = Visibility.Visible;
             }
         }
         private async void PhotoButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -136,24 +143,23 @@ namespace ComputerVision
             // Visibility change
             cameraGrid.Visibility = Visibility.Collapsed;
             cropGrid.Visibility = Visibility.Visible;
-            cropConfirmButton.Visibility = Visibility.Visible;
-            cropCancelButton.Visibility = Visibility.Visible;
-
-            // Open cropping field
-            //OpenCropField();
+            processConfirmButton.Visibility = Visibility.Visible;
+            processCancelButton.Visibility = Visibility.Visible;         
         }
-        private async void cropConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             // Start managing image source
-            await MakeAnalysisRequest(_byteData);
-
+            // Get image analysis as string
+            var imageAnalysis = await MakeAnalysisRequest(_byteData);
+            var result = BingImageSearch(imageAnalysis);
             // Change visibility
-            cropConfirmButton.Visibility = Visibility.Collapsed;
-            cropCancelButton.Visibility = Visibility.Collapsed;
+            processConfirmButton.Visibility = Visibility.Collapsed;
+            processCancelButton.Visibility = Visibility.Collapsed;
         }
-        private void cropCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void processCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            Debug.WriteLine("Cancel");
+            Debug.WriteLine("Process Cancelled");
+            await CleanupPreviewAndBitmapAsync();
         }
         private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
         {
@@ -208,9 +214,7 @@ namespace ComputerVision
                 {
                     allResolutionsAvailable = previewResolution[i] as VideoEncodingProperties;
                     height = allResolutionsAvailable.Height;
-                    width = allResolutionsAvailable.Width;
-
-                    Debug.WriteLine("\tVideo Preview resolution {0}-th Height: {1}, Width: {2}", i, height, width);
+                    width = allResolutionsAvailable.Width;                    
                 }
                 //use debugger at the following line to check height & width for captured photo resolution
                 for (int i = 0; i < photoResolution.Count; i++)
@@ -218,8 +222,6 @@ namespace ComputerVision
                     allResolutionsAvailable = photoResolution[i] as VideoEncodingProperties;
                     height = allResolutionsAvailable.Height;
                     width = allResolutionsAvailable.Width;
-
-                    Debug.WriteLine("\tCaptured Photo resolution {0}-th Height: {1}, Width: {2}", i, height, width);
                 }
 
                 // Prevent the device from sleeping while previewing
@@ -240,22 +242,17 @@ namespace ComputerVision
                 // Set the camera preview and the size
                 previewControl.Source = _mediaCapture;
                 _videoFrameHeight = (int)_previewProperties.Height;
-                _videoFrameWidth = (int)_previewProperties.Width;
-
-                Debug.WriteLine("\tCurrent preview resolution Height: {0}, Width: {1}", _videoFrameHeight, _videoFrameWidth);
+                _videoFrameWidth = (int)_previewProperties.Width;                
 
                 // Set the root grid size as previewing size
                 ApplicationView.GetForCurrentView().TryResizeView(new Size
                 {
                     Height = _videoFrameHeight + commandBarPanel.ActualHeight,
                     Width = _videoFrameWidth
-                });
-                Debug.WriteLine("\tRootGrid resolution Height: {0}, Width: {1}", rootGrid.Height, rootGrid.Width);
+                });                
 
                 await _mediaCapture.StartPreviewAsync();
-
-                Debug.WriteLine("\tPreviewControl resolution Height: {0}, Width: {1}", previewControl.Height, previewControl.Width);
-
+                
                 _isPreviewing = true;
             }
             catch (UnauthorizedAccessException)
@@ -324,6 +321,13 @@ namespace ComputerVision
                 imageControl.Source = _imgSource;
             }
         }
+
+        #endregion MediaCapture methods
+
+
+
+        #region Helper functions
+
         private async Task LoadImageAsync(StorageFile file)
         {
             using (var fileStream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read))
@@ -342,13 +346,6 @@ namespace ComputerVision
                 imageControl.Source = _imgSource;
             }
         }
-
-        #endregion MediaCapture methods
-
-
-
-        #region Helper functions
-
         private async void _mediaCapture_CaptureDeviceExclusiveControlStatusChanged(MediaCapture sender, MediaCaptureDeviceExclusiveControlStatusChangedEventArgs args)
         {
             if (args.Status == MediaCaptureDeviceExclusiveControlStatus.SharedReadOnlyAvailable)
@@ -364,18 +361,18 @@ namespace ComputerVision
             }
         }
         // Gets the analysis of the specified image file by using the Computer Vision REST API.
-        static async Task MakeAnalysisRequest(byte[] _byteData)
+        private static async Task<string> MakeAnalysisRequest(byte[] _byteData)
         {
             HttpClient client = new HttpClient();
 
             // Request headers.
-            client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", subscriptionKey);
+            client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", accesskeyCV);
 
             // Request parameters. A third optional parameter is "details".
             string requestParameters = "visualFeatures=Categories,Description,Color&language=en";
 
             // Assemble the URI for the REST API Call.
-            string uri = uriBase + "?" + requestParameters;
+            string uri = uriBaseCV + "?" + requestParameters;
 
             HttpResponseMessage response;
 
@@ -393,11 +390,55 @@ namespace ComputerVision
 
                 // Display the JSON response.
                 Debug.WriteLine("\nResponse:\n");
-                Debug.WriteLine(JsonPrettyPrint(contentString));
+                Debug.WriteLine(JsonPrettyPrintCV(contentString));                
+
+                return ProcessJsonContent(contentString);
             }
         }
+
+        private static string ProcessJsonContent(string contentString)
+        {
+
+            return "Dobgs";
+        }
+        
+        // Performs a Bing Image search and return the results as a SearchResult.        
+        private static SearchResult BingImageSearch(string searchQuery)
+        {
+            // Construct the URI of the search request
+            var uriQuery = uriBaseBing + "?q=" + Uri.EscapeDataString(searchQuery);
+
+            // Perform the Web request and get the response
+            WebRequest request = HttpWebRequest.Create(uriQuery);
+            request.Headers["Ocp-Apim-Subscription-Key"] = accessKeyBing;
+            HttpWebResponse response = (HttpWebResponse)request.GetResponseAsync().Result;
+            string json = new StreamReader(response.GetResponseStream()).ReadToEnd();
+
+            // Create result object for return
+            var searchResult = new SearchResult()
+            {
+                jsonResult = json,
+                relevantHeaders = new Dictionary<String, String>()
+            };
+
+            // Extract Bing HTTP headers
+            foreach (String header in response.Headers)
+            {
+                if (header.StartsWith("BingAPIs-") || header.StartsWith("X-MSEdge-"))
+                    searchResult.relevantHeaders[header] = response.Headers[header];
+            }
+
+            Debug.WriteLine("\nRelevant HTTP Headers:\n");
+            foreach (var header in searchResult.relevantHeaders)
+                Debug.WriteLine(header.Key + ": " + header.Value);
+
+            Debug.WriteLine("\nJSON Response:\n");
+            Debug.WriteLine(JsonPrettyPrintBing(searchResult.jsonResult));
+
+            return searchResult;
+        }
         // Formats the given JSON string by adding line breaks and indents.
-        static string JsonPrettyPrint(string json)
+        private static string JsonPrettyPrintCV(string json)
         {
             if (string.IsNullOrEmpty(json))
                 return string.Empty;
@@ -459,6 +500,72 @@ namespace ComputerVision
                 }
             }
             return sb.ToString();
+        }
+        static string JsonPrettyPrintBing(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                return string.Empty;
+
+            json = json.Replace(Environment.NewLine, "").Replace("\t", "");
+
+            StringBuilder sb = new StringBuilder();
+            bool quote = false;
+            bool ignore = false;
+            char last = ' ';
+            int offset = 0;
+            int indentLength = 2;
+
+            foreach (char ch in json)
+            {
+                switch (ch)
+                {
+                    case '"':
+                        if (!ignore) quote = !quote;
+                        break;
+                    case '\\':
+                        if (quote && last != '\\') ignore = true;
+                        break;
+                }
+
+                if (quote)
+                {
+                    sb.Append(ch);
+                    if (last == '\\' && ignore) ignore = false;
+                }
+                else
+                {
+                    switch (ch)
+                    {
+                        case '{':
+                        case '[':
+                            sb.Append(ch);
+                            sb.Append(Environment.NewLine);
+                            sb.Append(new string(' ', ++offset * indentLength));
+                            break;
+                        case '}':
+                        case ']':
+                            sb.Append(Environment.NewLine);
+                            sb.Append(new string(' ', --offset * indentLength));
+                            sb.Append(ch);
+                            break;
+                        case ',':
+                            sb.Append(ch);
+                            sb.Append(Environment.NewLine);
+                            sb.Append(new string(' ', offset * indentLength));
+                            break;
+                        case ':':
+                            sb.Append(ch);
+                            sb.Append(' ');
+                            break;
+                        default:
+                            if (quote || ch != ' ') sb.Append(ch);
+                            break;
+                    }
+                }
+                last = ch;
+            }
+
+            return sb.ToString().Trim();
         }
 
         #endregion Helper functions
