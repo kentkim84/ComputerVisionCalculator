@@ -32,6 +32,8 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.ObjectModel;
+using Windows.Storage.Streams;
 
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -83,7 +85,7 @@ namespace ComputerVision
         public MainPage()
         {
             this.InitializeComponent();
-
+            this.ViewModel = new ImageResourceViewModel();
             Application.Current.Suspending += Application_Suspending;
         }
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
@@ -158,6 +160,7 @@ namespace ComputerVision
 
             // 
             ProcessSearchResult(searchResult);
+
             // Change visibility
             processConfirmButton.Visibility = Visibility.Collapsed;
             processCancelButton.Visibility = Visibility.Collapsed;
@@ -311,46 +314,64 @@ namespace ComputerVision
 
             // Capture the preview frame.
             using (var currentFrame = await _mediaCapture.GetPreviewFrameAsync(videoFrame))
-            {
+            {                
+                // Create softwarebitmap from current video frame
                 _softwareBitmap = currentFrame.SoftwareBitmap;
-
-                // Resize WriteableBitmap
-                // await ResizeWriteableBitmap(imgSource)
-                // in ResizeBitmapImage, it will resize the bitmap image using current view size then
-                // return resized WriteableBitmap
-
-                // private async Task<WriteableBitmap> ResizeWriteableBitmap(WriteableBitmap imgSource)
-
-                _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
-
-                _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
-                imageControl.Source = _imgSource;
+                // Set image source
+                await SetImageControlSource(_softwareBitmap);            
             }
         }
-
-        #endregion MediaCapture methods
-        
-
-
-        #region Helper functions
-
         private async Task LoadImageAsync(StorageFile file)
         {
             using (var fileStream = await file.OpenAsync(Windows.Storage.FileAccessMode.Read))
             {
-                // Get byte array from file stream
-                BinaryReader br = new BinaryReader(fileStream.AsStream());
-                _byteData = br.ReadBytes((int)fileStream.Size);
-
                 var decoder = await BitmapDecoder.CreateAsync(fileStream);
-
+                // Create software bitmap from file stream
                 _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-
-                _imgSource = new WriteableBitmap(_softwareBitmap.PixelWidth, _softwareBitmap.PixelHeight);
-
-                _softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
-                imageControl.Source = _imgSource;
+                // Set image source
+                await SetImageControlSource(_softwareBitmap);
             }
+        }
+
+        #endregion MediaCapture methods
+
+
+
+        #region Helper functions
+
+        private async Task SetImageControlSource(SoftwareBitmap softwareBitmap)
+        {
+            // Get byte array from software bitmap
+            _byteData = await EncodedBytes(softwareBitmap, BitmapEncoder.JpegEncoderId);
+            // Create writeable bitmap from software bitmap
+            _imgSource = new WriteableBitmap(softwareBitmap.PixelWidth, softwareBitmap.PixelHeight);
+            // Copy software bitmap buffer to writeable bitmap
+            softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
+            // Set UI control source
+            imageControl.Source = _imgSource;
+        }
+        private async Task<byte[]> EncodedBytes(SoftwareBitmap soft, Guid encoderId)
+        {
+            byte[] array = null;
+
+            // First: Use an encoder to copy from SoftwareBitmap to an in-mem stream (FlushAsync)
+            // Next:  Use ReadAsync on the in-mem stream to get byte[] array
+
+            using (var ms = new InMemoryRandomAccessStream())
+            {
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(encoderId, ms);
+                encoder.SetSoftwareBitmap(soft);
+
+                try
+                {
+                    await encoder.FlushAsync();
+                }
+                catch (Exception ex) { return new byte[0]; }
+
+                array = new byte[ms.Size];
+                await ms.ReadAsync(array.AsBuffer(), (uint)ms.Size, InputStreamOptions.None);
+            }
+            return array;
         }
         private async void _mediaCapture_CaptureDeviceExclusiveControlStatusChanged(MediaCapture sender, MediaCaptureDeviceExclusiveControlStatusChangedEventArgs args)
         {
@@ -365,7 +386,7 @@ namespace ComputerVision
                     await StartPreviewAsync();
                 });
             }
-        }
+        }        
         // Gets the analysis of the specified image file by using the Computer Vision REST API.
         private static async Task<string> MakeAnalysisRequest(byte[] _byteData)
         {
@@ -452,9 +473,8 @@ namespace ComputerVision
         private void ProcessSearchResult(string searchResult)
         {                        
             JObject jObject = JObject.Parse(searchResult);
-            IList<JToken> jArray = jObject["value"].Children().ToList();
-
-            List<ImageResource> imageResources = new List<ImageResource>();
+            IList<JToken> jArray = jObject["value"].Children().ToList();            
+            List<ImageResource> imageResourceList = new List<ImageResource>();
 
             // Retrieve elements from the value
             foreach (JToken t in jArray)
@@ -479,41 +499,21 @@ namespace ComputerVision
                 };
 
                 // Add item into List
-                imageResources.Add(imageResource);               
+                imageResourceList.Add(imageResource);               
             }
             
-            foreach (ImageResource i in imageResources)
-            {
-                Debug.WriteLine("Value[] :\n\tName: {0}\n\tThumbUrl: {1}\n\tContUrl: {2}\n\tHostUrl: {3}\n\tImageSize - Width: {4}, Height: {5}\n\tThumbSize - Width: {6}, Height: {7}",
-                    i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl, i.Width, i.Height, i.Thumbnail.width, i.Thumbnail.height);
-            }
-
+            //foreach (ImageResource i in imageResources)
+            //{
+            //    Debug.WriteLine("Value[] :\n\tName: {0}\n\tThumbUrl: {1}\n\tContUrl: {2}\n\tHostUrl: {3}\n\tImageSize - Width: {4}, Height: {5}\n\tThumbSize - Width: {6}, Height: {7}",
+            //        i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl, i.Width, i.Height, i.Thumbnail.width, i.Thumbnail.height);
+            //}
+            
+            this.ViewModel = new ImageResourceViewModel(imageResourceList);
+            ImageResourceListView.ItemsSource = imageResourceList;
             // Set Image gallery
-            SetItemsSource(imageResources);
-
+            //SetItemsSource(imageResources);
         }
-        private async void SetItemsSource(List<ImageResource> imageResources)
-        {
-            StorageFolder folder = Package.Current.InstalledLocation;
-            StorageFolder photosFolder = await folder.GetFolderAsync("Photos");
-            IReadOnlyList<StorageFile> files = await photosFolder.GetFilesAsync();
-
-            const int visibleItemsCount = 12;
-            int hiddenItemsCount = files.Count - visibleItemsCount;
-
-            ItemsControl.ItemsSource = imageResources.Select((t, i) => new
-            {
-                //ThumbnailUrl = 
-                //Name = 
-                //Size = 
-
-                //ImageUri = new Uri(f.Path),
-                ThumbnailUrl = new BitmapImage(new Uri(t.ThumbnailUrl, UriKind.Absolute)),
-                Name = $"+{i + 1}",
-                
-                OverlayVisiblity = hiddenItemsCount > 0 && i == visibleItemsCount - 1 ? Visibility.Visible : Visibility.Collapsed
-            });
-        }
+        public ImageResourceViewModel ViewModel { get; set; }        
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
         {
@@ -647,7 +647,7 @@ namespace ComputerVision
 
         #endregion Helper functions
 
-    }    
+    }
     public static class Extensions
     {
         public static void ForEach<T>(this IEnumerable<T> ie, Action<T> action)
@@ -667,6 +667,32 @@ namespace ComputerVision
         public int Width { get; set; }
         public int Height { get; set; }
         public Thumbnail Thumbnail { get; set; }
+    }
+    public class ImageResourceViewModel
+    {        
+        private ObservableCollection<ImageResource> imageResourceList = new ObservableCollection<ImageResource>();
+        public ObservableCollection<ImageResource> ImageResources { get { return this.imageResourceList; } }
+        // Default Constructor
+        public ImageResourceViewModel()
+        {
+            var defaultCount = 4;
+            for (int i = 0; i < defaultCount; i++)
+            {
+                this.imageResourceList.Add(new ImageResource()
+                {
+                    Name = "Default Box",
+                    ThumbnailUrl = @"Assets\Square150x150Logo.scale-200.png"
+                });
+            }            
+        }
+        // Add each imageResource into observable collection
+        public ImageResourceViewModel(List<ImageResource> imageResourceList)
+        {
+            foreach (ImageResource imageResource in imageResourceList)
+            {
+                this.imageResourceList.Add(imageResource);
+            }            
+        }        
     }
 
     public class Thumbnail
