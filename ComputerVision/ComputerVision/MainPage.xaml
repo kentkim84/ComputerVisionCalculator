@@ -6,7 +6,36 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-
+    
+    <Page.Resources>
+        <DataTemplate x:Key="ItemTemplate">
+            <Grid>
+                <Viewbox x:Name="Placeholder">
+                    <Border Height="3" 
+                            Width="4" 
+                            Opacity=".1"
+                            Background="#000000"/>
+                </Viewbox>
+                <Image Source="{Binding ThumbnailUrl}"/>
+                <Border x:Name="Overlay" 
+                        Opacity=".2" 
+                        Visibility="{Binding OverlayVisiblity}" 
+                        Background="#000000"/>
+                <TextBlock x:Name="Counter" 
+                        FontSize="30" 
+                        FontWeight="SemiBold"
+                        Foreground="#FFFFFF"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="{Binding OverlayVisiblity}"
+                        Text="{Binding Name}"/>
+                <!--<TextBlock Style="{ThemeResource CaptionTextBlockStyle}" 
+                           Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"                           
+                           Text="{x:Bind Size}"/>-->
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+    
     <Grid x:Name="rootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!--Grid initialisation-->
         <Grid.RowDefinitions>
@@ -24,7 +53,6 @@
             <CommandBar HorizontalAlignment="Center">
                 <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
                 <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
-
                 <AppBarToggleButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
                 <AppBarToggleButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>
             </CommandBar>
@@ -73,24 +101,24 @@
         </StackPanel>
 
         <StackPanel Background="LightGoldenrodYellow" Grid.Row="1" Grid.Column="1">
-            <!--<GridView ItemsSource="{x:Bind ViewModel.Recordings}">
-                <GridView.ItemTemplate>
-                    <DataTemplate x:Name="ImageTextDataTemplate" x:DataType="local:Recording">
-                        <StackPanel Height="280" Width="180" Margin="12" AutomationProperties.Name="{x:Bind CompositionName}">
-                            <Image Source="Placeholder.png" Height="180" Width="180" Stretch="UniformToFill"/>
-                            <StackPanel Margin="0,12">
-                                <TextBlock Text="{x:Bind CompositionName}"/>
-                                <TextBlock Text="{x:Bind ArtistName}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </DataTemplate>
-                </GridView.ItemTemplate>
-                <GridView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <ItemsWrapGrid MaximumRowsOrColumns="10" Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                </GridView.ItemsPanel>
-            </GridView>-->
+            <ScrollViewer>
+                <ItemsControl 
+                    x:Name="ItemsControl"
+                    VerticalAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    ItemTemplate="{StaticResource ItemTemplate}">
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Margin" Value="3"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <local:ImageGalleryPanel MaxWidth="800" ItemsInFirstRow="2" ItemsInSecondRow="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
         </StackPanel>
     </Grid>
 </Page>

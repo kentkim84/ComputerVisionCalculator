@@ -95,6 +95,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ImageGalleryPanel.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
@@ -107,6 +108,31 @@
     <None Include="ComputerVision_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Photos\P1070943.JPG" />
+    <Content Include="Photos\P1070944.JPG" />
+    <Content Include="Photos\P1070945.JPG" />
+    <Content Include="Photos\P1070946.JPG" />
+    <Content Include="Photos\P1070947.JPG" />
+    <Content Include="Photos\P1070948.JPG" />
+    <Content Include="Photos\P1070949.JPG" />
+    <Content Include="Photos\P1070950.JPG" />
+    <Content Include="Photos\P1070951.JPG" />
+    <Content Include="Photos\P1070952.JPG" />
+    <Content Include="Photos\P1070953.JPG" />
+    <Content Include="Photos\P1070954.JPG" />
+    <Content Include="Photos\P1070955.JPG" />
+    <Content Include="Photos\P1070956.JPG" />
+    <Content Include="Photos\P1070957.JPG" />
+    <Content Include="Photos\P1070958.JPG" />
+    <Content Include="Photos\P1070959.JPG" />
+    <Content Include="Photos\P1070960.JPG" />
+    <Content Include="Photos\P1070961.JPG" />
+    <Content Include="Photos\P1070962.JPG" />
+    <Content Include="Photos\P1070963.JPG" />
+    <Content Include="Photos\P1070964.JPG" />
+    <Content Include="Photos\P1070965.JPG" />
+    <Content Include="Photos\P1070966.JPG" />
+    <Content Include="Photos\P1070967.JPG" />
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />

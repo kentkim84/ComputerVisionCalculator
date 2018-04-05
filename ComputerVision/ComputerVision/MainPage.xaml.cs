@@ -156,6 +156,7 @@ namespace ComputerVision
             var imageAnalysis = await MakeAnalysisRequest(_byteData);
             var searchResult = BingImageSearch(imageAnalysis);
 
+            // 
             ProcessSearchResult(searchResult);
             // Change visibility
             processConfirmButton.Visibility = Visibility.Collapsed;
@@ -328,7 +329,7 @@ namespace ComputerVision
         }
 
         #endregion MediaCapture methods
-
+        
 
 
         #region Helper functions
@@ -414,7 +415,7 @@ namespace ComputerVision
             return result;
         }        
         // Performs a Bing Image search and return the results as a SearchResult.        
-        private static string BingImageSearch(string searchQuery)
+        private string BingImageSearch(string searchQuery)
         {
             // Construct the URI of the search request
             var uriQuery = uriBaseBing + "?q=" + Uri.EscapeDataString(searchQuery);
@@ -448,7 +449,7 @@ namespace ComputerVision
 
             return searchResult.jsonResult;
         }
-        private static void ProcessSearchResult(string searchResult)
+        private void ProcessSearchResult(string searchResult)
         {                        
             JObject jObject = JObject.Parse(searchResult);
             IList<JToken> jArray = jObject["value"].Children().ToList();
@@ -457,25 +458,61 @@ namespace ComputerVision
 
             // Retrieve elements from the value
             foreach (JToken t in jArray)
-            {                                
-                // need to create list<ImageResource>
+            {
+                var thumbnailJObject = (JObject)t["thumbnail"];
+
+                var thumbnail = new Thumbnail()
+                {
+                    width = (int)thumbnailJObject["width"],
+                    height = (int)thumbnailJObject["height"]
+                };
+                
                 var imageResource = new ImageResource()
                 {
                     Name = (string)t["name"],
                     ThumbnailUrl = (string)t["thumbnailUrl"],
                     ContentUrl = (string)t["contentUrl"],
-                    HostPageUrl = (string)t["hostPageUrl"]
+                    HostPageUrl = (string)t["hostPageUrl"],
+                    Width = (int)t["width"],
+                    Height = (int)t["height"],
+                    Thumbnail = thumbnail
                 };
 
                 // Add item into List
                 imageResources.Add(imageResource);               
             }
-
+            
             foreach (ImageResource i in imageResources)
             {
-                Debug.WriteLine("Value - Name: {0}, Thumb: {1}, ContUrl: {2}, HostUrl: {3}", i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl);
+                Debug.WriteLine("Value[] :\n\tName: {0}\n\tThumbUrl: {1}\n\tContUrl: {2}\n\tHostUrl: {3}\n\tImageSize - Width: {4}, Height: {5}\n\tThumbSize - Width: {6}, Height: {7}",
+                    i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl, i.Width, i.Height, i.Thumbnail.width, i.Thumbnail.height);
             }
 
+            // Set Image gallery
+            SetItemsSource(imageResources);
+
+        }
+        private async void SetItemsSource(List<ImageResource> imageResources)
+        {
+            StorageFolder folder = Package.Current.InstalledLocation;
+            StorageFolder photosFolder = await folder.GetFolderAsync("Photos");
+            IReadOnlyList<StorageFile> files = await photosFolder.GetFilesAsync();
+
+            const int visibleItemsCount = 12;
+            int hiddenItemsCount = files.Count - visibleItemsCount;
+
+            ItemsControl.ItemsSource = imageResources.Select((t, i) => new
+            {
+                //ThumbnailUrl = 
+                //Name = 
+                //Size = 
+
+                //ImageUri = new Uri(f.Path),
+                ThumbnailUrl = new BitmapImage(new Uri(t.ThumbnailUrl, UriKind.Absolute)),
+                Name = $"+{i + 1}",
+                
+                OverlayVisiblity = hiddenItemsCount > 0 && i == visibleItemsCount - 1 ? Visibility.Visible : Visibility.Collapsed
+            });
         }
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
@@ -610,8 +647,8 @@ namespace ComputerVision
 
         #endregion Helper functions
 
-    }
-    static class Extensions
+    }    
+    public static class Extensions
     {
         public static void ForEach<T>(this IEnumerable<T> ie, Action<T> action)
         {
@@ -627,5 +664,14 @@ namespace ComputerVision
         public string ThumbnailUrl { get; set; }
         public string ContentUrl { get; set; }
         public string HostPageUrl { get; set; }
-    }  
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public Thumbnail Thumbnail { get; set; }
+    }
+
+    public class Thumbnail
+    {
+        public int width { get; set; }
+        public int height { get; set; }
+    }
 }
