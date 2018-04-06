@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
-  <Identity Name="605be79c-01b5-4c67-acd7-fe56336d6fe6" Publisher="CN=kentkim84" Version="1.0.0.0" />
-  <mp:PhoneIdentity PhoneProductId="605be79c-01b5-4c67-acd7-fe56336d6fe6" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Identity Name="0814416e-af22-44e4-9419-62f4e1be2b96" Publisher="CN=kentkim84" Version="1.0.0.0" />
+  <mp:PhoneIdentity PhoneProductId="0814416e-af22-44e4-9419-62f4e1be2b96" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>ComputerVision</DisplayName>
     <PublisherDisplayName>kentkim84</PublisherDisplayName>
@@ -24,7 +24,7 @@
   </Applications>
   <Capabilities>
     <Capability Name="internetClient" />
-    <DeviceCapability Name="webcam" />
     <DeviceCapability Name="microphone" />
+    <DeviceCapability Name="webcam" />
   </Capabilities>
 </Package>

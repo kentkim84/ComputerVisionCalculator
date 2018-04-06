@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -19,6 +21,7 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using Windows.System.Display;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
@@ -30,11 +33,6 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Collections.ObjectModel;
-using Windows.Storage.Streams;
-
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -77,8 +75,6 @@ namespace ComputerVision
             public String jsonResult;
             public Dictionary<String, String> relevantHeaders;
         }
-
-
 
         #region Constructor, lifecycle and navigation
 
@@ -149,7 +145,7 @@ namespace ComputerVision
             cameraGrid.Visibility = Visibility.Collapsed;
             cropGrid.Visibility = Visibility.Visible;
             processConfirmButton.Visibility = Visibility.Visible;
-            processCancelButton.Visibility = Visibility.Visible;         
+            processCancelButton.Visibility = Visibility.Visible;
         }
         private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
@@ -172,22 +168,22 @@ namespace ComputerVision
         }
         private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
         {
-            rectangle.Opacity = 0.5;
+            //rectangle.Opacity = 0.5;
         }
         private void Rect_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
         {
             //, PointerRoutedEventArgs e2
             //_pt = e2.GetCurrentPoint(this);
             // translate
-            rectTransform.TranslateX += e.Delta.Translation.X;
-            rectTransform.TranslateY += e.Delta.Translation.Y;
+            //rectTransform.TranslateX += e.Delta.Translation.X;
+            //rectTransform.TranslateY += e.Delta.Translation.Y;
             // scale
             //rectTransform.ScaleX += 0.01;
             //rectTransform.ScaleY += 0.01;
         }
         private void Rect_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
         {
-            rectangle.Opacity = 0.3;
+            //rectangle.Opacity = 0.3;
         }
 
         #endregion Event handlers
@@ -223,7 +219,7 @@ namespace ComputerVision
                 {
                     allResolutionsAvailable = previewResolution[i] as VideoEncodingProperties;
                     height = allResolutionsAvailable.Height;
-                    width = allResolutionsAvailable.Width;                    
+                    width = allResolutionsAvailable.Width;
                 }
                 //use debugger at the following line to check height & width for captured photo resolution
                 for (int i = 0; i < photoResolution.Count; i++)
@@ -251,17 +247,17 @@ namespace ComputerVision
                 // Set the camera preview and the size
                 previewControl.Source = _mediaCapture;
                 _videoFrameHeight = (int)_previewProperties.Height;
-                _videoFrameWidth = (int)_previewProperties.Width;                
+                _videoFrameWidth = (int)_previewProperties.Width;
 
                 // Set the root grid size as previewing size
                 ApplicationView.GetForCurrentView().TryResizeView(new Size
                 {
                     Height = _videoFrameHeight + commandBarPanel.ActualHeight,
                     Width = _videoFrameWidth
-                });                
+                });
 
                 await _mediaCapture.StartPreviewAsync();
-                
+
                 _isPreviewing = true;
             }
             catch (UnauthorizedAccessException)
@@ -314,11 +310,11 @@ namespace ComputerVision
 
             // Capture the preview frame.
             using (var currentFrame = await _mediaCapture.GetPreviewFrameAsync(videoFrame))
-            {                
+            {
                 // Create softwarebitmap from current video frame
                 _softwareBitmap = currentFrame.SoftwareBitmap;
                 // Set image source
-                await SetImageControlSource(_softwareBitmap);            
+                await SetImageControlSource(_softwareBitmap);
             }
         }
         private async Task LoadImageAsync(StorageFile file)
@@ -386,7 +382,7 @@ namespace ComputerVision
                     await StartPreviewAsync();
                 });
             }
-        }        
+        }
         // Gets the analysis of the specified image file by using the Computer Vision REST API.
         private static async Task<string> MakeAnalysisRequest(byte[] _byteData)
         {
@@ -414,14 +410,14 @@ namespace ComputerVision
 
                 // Get the JSON response.
                 var contentString = await response.Content.ReadAsStringAsync();
-                
+
                 // Display the JSON response.
                 //Debug.WriteLine("\nResponse:\n");
                 //Debug.WriteLine(JsonPrettyPrintCV(contentString));                
 
                 return ProcessJsonContent(contentString);
             }
-        }        
+        }
         private static string ProcessJsonContent(string jsonContent)
         {
             if (string.IsNullOrEmpty(jsonContent))
@@ -429,12 +425,12 @@ namespace ComputerVision
 
             // Get tags and captions
             JObject jObject = JObject.Parse(jsonContent);
-            IList<JToken> jArray = jObject["description"]["captions"].Children().ToList();                                    
+            IList<JToken> jArray = jObject["description"]["captions"].Children().ToList();
             var result = (string)jArray[0]["text"];
-            
+
             Debug.WriteLine(result);
             return result;
-        }        
+        }
         // Performs a Bing Image search and return the results as a SearchResult.        
         private string BingImageSearch(string searchQuery)
         {
@@ -471,9 +467,9 @@ namespace ComputerVision
             return searchResult.jsonResult;
         }
         private void ProcessSearchResult(string searchResult)
-        {                        
+        {
             JObject jObject = JObject.Parse(searchResult);
-            IList<JToken> jArray = jObject["value"].Children().ToList();            
+            IList<JToken> jArray = jObject["value"].Children().ToList();
             List<ImageResource> imageResourceList = new List<ImageResource>();
 
             // Retrieve elements from the value
@@ -486,7 +482,7 @@ namespace ComputerVision
                     width = (int)thumbnailJObject["width"],
                     height = (int)thumbnailJObject["height"]
                 };
-                
+
                 var imageResource = new ImageResource()
                 {
                     Name = (string)t["name"],
@@ -499,21 +495,13 @@ namespace ComputerVision
                 };
 
                 // Add item into List
-                imageResourceList.Add(imageResource);               
+                imageResourceList.Add(imageResource);
             }
-            
-            //foreach (ImageResource i in imageResources)
-            //{
-            //    Debug.WriteLine("Value[] :\n\tName: {0}\n\tThumbUrl: {1}\n\tContUrl: {2}\n\tHostUrl: {3}\n\tImageSize - Width: {4}, Height: {5}\n\tThumbSize - Width: {6}, Height: {7}",
-            //        i.Name, i.ThumbnailUrl, i.ContentUrl, i.HostPageUrl, i.Width, i.Height, i.Thumbnail.width, i.Thumbnail.height);
-            //}
-            
+
+            // Add image resource list to items source
             this.ViewModel = new ImageResourceViewModel(imageResourceList);
             ImageResourceListView.ItemsSource = imageResourceList;
-            // Set Image gallery
-            //SetItemsSource(imageResources);
         }
-        public ImageResourceViewModel ViewModel { get; set; }        
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
         {
@@ -644,9 +632,9 @@ namespace ComputerVision
 
             return sb.ToString().Trim();
         }
+        public ImageResourceViewModel ViewModel { get; set; }
 
         #endregion Helper functions
-
     }
     public static class Extensions
     {
@@ -669,9 +657,9 @@ namespace ComputerVision
         public Thumbnail Thumbnail { get; set; }
     }
     public class ImageResourceViewModel
-    {        
+    {
         private ObservableCollection<ImageResource> imageResourceList = new ObservableCollection<ImageResource>();
-        public ObservableCollection<ImageResource> ImageResources { get { return this.imageResourceList; } }
+        public ObservableCollection<ImageResource> ImageResourceList { get { return this.imageResourceList; } }
         // Default Constructor
         public ImageResourceViewModel()
         {
@@ -683,7 +671,7 @@ namespace ComputerVision
                     Name = "Default Box",
                     ThumbnailUrl = @"Assets\Square150x150Logo.scale-200.png"
                 });
-            }            
+            }
         }
         // Add each imageResource into observable collection
         public ImageResourceViewModel(List<ImageResource> imageResourceList)
@@ -691,10 +679,9 @@ namespace ComputerVision
             foreach (ImageResource imageResource in imageResourceList)
             {
                 this.imageResourceList.Add(imageResource);
-            }            
-        }        
+            }
+        }
     }
-
     public class Thumbnail
     {
         public int width { get; set; }
