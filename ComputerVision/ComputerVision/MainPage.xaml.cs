@@ -81,9 +81,10 @@ namespace ComputerVision
         public MainPage()
         {
             this.InitializeComponent();
-            this.ViewModel = new ImageResourceViewModel();
+            this.ViewModel = new ImageInfoViewModel();
             Application.Current.Suspending += Application_Suspending;
         }
+        public ImageInfoViewModel ViewModel { get; set; }
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
         {
             // Handle global application events only if this page is active
@@ -165,6 +166,11 @@ namespace ComputerVision
         {
             Debug.WriteLine("Process Cancelled");
             await CleanupPreviewAndBitmapAsync();
+        }        
+        private void ImageInfoGridView_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // Move to the detail page
+            //this.Frame.Navigate(typeof(Page1));
         }
         private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
         {
@@ -250,11 +256,11 @@ namespace ComputerVision
                 _videoFrameWidth = (int)_previewProperties.Width;
 
                 // Set the root grid size as previewing size
-                ApplicationView.GetForCurrentView().TryResizeView(new Size
-                {
-                    Height = _videoFrameHeight + commandBarPanel.ActualHeight,
-                    Width = _videoFrameWidth
-                });
+                //ApplicationView.GetForCurrentView().TryResizeView(new Size
+                //{
+                //    Height = _videoFrameHeight + commandBarPanel.ActualHeight,
+                //    Width = _videoFrameWidth
+                //});
 
                 await _mediaCapture.StartPreviewAsync();
 
@@ -470,7 +476,7 @@ namespace ComputerVision
         {
             JObject jObject = JObject.Parse(searchResult);
             IList<JToken> jArray = jObject["value"].Children().ToList();
-            List<ImageResource> imageResourceList = new List<ImageResource>();
+            List<ImageInfo> imageResourceList = new List<ImageInfo>();
 
             // Retrieve elements from the value
             foreach (JToken t in jArray)
@@ -483,7 +489,7 @@ namespace ComputerVision
                     height = (int)thumbnailJObject["height"]
                 };
 
-                var imageResource = new ImageResource()
+                var imageResource = new ImageInfo()
                 {
                     Name = (string)t["name"],
                     ThumbnailUrl = (string)t["thumbnailUrl"],
@@ -499,8 +505,8 @@ namespace ComputerVision
             }
 
             // Add image resource list to items source
-            this.ViewModel = new ImageResourceViewModel(imageResourceList);
-            ImageResourceListView.ItemsSource = imageResourceList;
+            this.ViewModel = new ImageInfoViewModel(imageResourceList);
+            ImageInfoGridView.ItemsSource = ViewModel.ImageInfoCVS;
         }
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
@@ -632,9 +638,11 @@ namespace ComputerVision
 
             return sb.ToString().Trim();
         }
-        public ImageResourceViewModel ViewModel { get; set; }
+
 
         #endregion Helper functions
+
+
     }
     public static class Extensions
     {
@@ -646,27 +654,29 @@ namespace ComputerVision
             }
         }
     }
-    public class ImageResource
+    public class ImageInfo
     {
+        // Auto-Impl Properties for trivial get and set
         public string Name { get; set; }
         public string ThumbnailUrl { get; set; }
         public string ContentUrl { get; set; }
         public string HostPageUrl { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public string Size { get { return Width + " x " + Height; } }
         public Thumbnail Thumbnail { get; set; }
     }
-    public class ImageResourceViewModel
+    public class ImageInfoViewModel
     {
-        private ObservableCollection<ImageResource> imageResourceList = new ObservableCollection<ImageResource>();
-        public ObservableCollection<ImageResource> ImageResourceList { get { return this.imageResourceList; } }
+        private ObservableCollection<ImageInfo> imageInfoCVS = new ObservableCollection<ImageInfo>();
+    
         // Default Constructor
-        public ImageResourceViewModel()
+        public ImageInfoViewModel()
         {
-            var defaultCount = 4;
+            var defaultCount = 12;
             for (int i = 0; i < defaultCount; i++)
             {
-                this.imageResourceList.Add(new ImageResource()
+                this.imageInfoCVS.Add(new ImageInfo()
                 {
                     Name = "Default Box",
                     ThumbnailUrl = @"Assets\Square150x150Logo.scale-200.png"
@@ -674,13 +684,15 @@ namespace ComputerVision
             }
         }
         // Add each imageResource into observable collection
-        public ImageResourceViewModel(List<ImageResource> imageResourceList)
+        public ImageInfoViewModel(List<ImageInfo> imageResourceList)
         {
-            foreach (ImageResource imageResource in imageResourceList)
+            foreach (ImageInfo imageResource in imageResourceList)
             {
-                this.imageResourceList.Add(imageResource);
+                this.imageInfoCVS.Add(imageResource);
             }
         }
+        
+        public ObservableCollection<ImageInfo> ImageInfoCVS { get { return imageInfoCVS; } }
     }
     public class Thumbnail
     {

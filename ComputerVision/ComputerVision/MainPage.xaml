@@ -5,32 +5,63 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:local="using:ComputerVision"
+    NavigationCacheMode="Enabled"
     mc:Ignorable="d">
+
+
+    <Page.Resources>
+        <DataTemplate x:Key="ImageGridViewTemplate" x:DataType="local:ImageInfo">
+            <StackPanel Orientation="Vertical">
+                <Image 
+                    Source="{x:Bind ThumbnailUrl}" 
+                    Height="140" Width="140" 
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Stretch="UniformToFill"/>
+                <StackPanel Margin="0, 12">
+                    <TextBlock 
+                        Text="{x:Bind Name}"
+                        Foreground="BlueViolet"
+                        Style="{ThemeResource BodyTextBlockStyle}"                         
+                        HorizontalAlignment="Center"/>
+                    <TextBlock 
+                        Text="{x:Bind Size}"
+                        Foreground="LightGray"
+                        Style="{ThemeResource BodyTextBlockStyle}" 
+                        HorizontalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+    </Page.Resources>
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!--Grid initialisation-->
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="48"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="300"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
+              
+        <TextBlock 
+            Text="Similar Image Search Application" 
+            VerticalAlignment="Center"
+            Style="{ThemeResource TitleTextBlockStyle}" 
+            Grid.Column="1"/>
 
         <!--Command-Bar Control-->
-        <StackPanel x:Name="commandBarPanel" Grid.Row="0" Grid.Column="0">
-            <CommandBar HorizontalAlignment="Center">
-                <AppBarToggleButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
-                <AppBarToggleButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
-                <AppBarToggleButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
-                <AppBarToggleButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>
-            </CommandBar>
-        </StackPanel>
+        <CommandBar HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0" Opacity="0.3">
+            <AppBarButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
+            <AppBarButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
+            <AppBarButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
+            <AppBarButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>
+        </CommandBar>
 
         <!--View Control-->
-        <StackPanel x:Name="viewPanel" Grid.Row="1" Grid.Column="0">
+        <RelativePanel x:Name="viewPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
             <!--Camera Control-->
             <Grid x:Name="cameraGrid" Visibility="Visible" >
                 <!--Image Preview-->
@@ -40,9 +71,9 @@
                         <ControlTemplate TargetType="Button">
                             <Grid>
                                 <Viewbox MaxWidth="40" MaxHeight="40">
-                                    <SymbolIcon Symbol="Camera"/>
+                                    <SymbolIcon Symbol="Camera"/> 
                                 </Viewbox>
-                                <Ellipse Width="60" Height="60" Fill="Black" Opacity="0.3" />
+                                <Ellipse Width="60" Height="60" Fill="DarkSlateGray" Opacity="0.5" />
                             </Grid>
                         </ControlTemplate>
                     </Button.Template>
@@ -52,46 +83,31 @@
             <!--Crop Control-->
             <Grid x:Name="cropGrid" Visibility="Collapsed">
                 <!--Image Captured-->
-                <Image x:Name="imageControl" Stretch="Uniform">
-                    <!--<Image.Clip>
-                        <RectangleGeometry x:Name="clipControl"/>
-                    </Image.Clip>-->
-                </Image>
-                <!--<Rectangle x:Name="rectangle" Width="100" Height="100" Fill="Beige" Opacity="0.3"
-                           ManipulationMode="TranslateX, TranslateY"
-                           ManipulationStarted="Rect_ManipulationStarted"
-                           ManipulationDelta="Rect_ManipulationDelta"
-                           ManipulationCompleted="Rect_ManipulationCompleted">
-                    <Rectangle.RenderTransform>
-                        <CompositeTransform x:Name="rectTransform"/>
-                    </Rectangle.RenderTransform>
-                </Rectangle>-->
-                <!--Crop control will be here-->
+                <Image x:Name="imageControl" Stretch="Uniform"/>
             </Grid>
 
-        </StackPanel>
+        </RelativePanel>
 
-        <RelativePanel Background="LightGoldenrodYellow" Grid.Row="1" Grid.Column="1">
-            <GridView x:Name="ImageResourceListView" ItemsSource="{x:Bind ViewModel.ImageResourceList}"
+        <RelativePanel Grid.Row="2" Grid.Column="0">
+            
+        </RelativePanel>
+
+        <RelativePanel Grid.Row="1" Grid.RowSpan="2" Grid.Column="1">
+            <GridView 
+                x:Name="ImageInfoGridView"
+                Margin="0,0,0,8"      
+                Tapped="ImageInfoGridView_Tapped"
+                ItemTemplate="{StaticResource ImageGridViewTemplate}"
+                ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
                 VerticalAlignment="Center" VerticalContentAlignment="Center"
                 ScrollViewer.HorizontalScrollMode="Disabled" 
                 ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                 ScrollViewer.VerticalScrollMode="Enabled"
                 ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <GridView.ItemTemplate>
-                    <DataTemplate x:DataType="local:ImageResource">
-                        <StackPanel Height="280" Width="320" Margin="12">
-                            <Image Source="{x:Bind ThumbnailUrl}" Height="180" Width="320" Stretch="UniformToFill"/>
-                            <StackPanel Margin="0,12">
-                                <TextBlock Text="{x:Bind Name}"/>
-                                <!--<TextBlock Text="{x:Bind Size}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"/>-->
-                            </StackPanel>
-                        </StackPanel>
-                    </DataTemplate>
-                </GridView.ItemTemplate>
+
                 <GridView.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <ItemsWrapGrid MaximumRowsOrColumns="6" Orientation="Horizontal"/>
+                        <ItemsWrapGrid MaximumRowsOrColumns="12" Orientation="Horizontal"/>
                     </ItemsPanelTemplate>
                 </GridView.ItemsPanel>
             </GridView>
