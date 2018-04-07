@@ -106,17 +106,17 @@ namespace ComputerVision
 
         #region Event handlers
 
-        private async void CameraButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void PreviewMediaButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             await InitialiseCameraAsync();
 
             // Visibility change
-            cameraGrid.Visibility = Visibility.Visible;
-            cropGrid.Visibility = Visibility.Collapsed;
-            processConfirmButton.Visibility = Visibility.Collapsed;
-            processCancelButton.Visibility = Visibility.Collapsed;
+            previewControl.Visibility = Visibility.Visible;
+            imageControl.Visibility = Visibility.Collapsed;
+            //processConfirmButton.Visibility = Visibility.Collapsed;
+            //processCancelButton.Visibility = Visibility.Collapsed;
         }
-        private async void FileButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void OpenFileButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             var picker = new FileOpenPicker()
             {
@@ -132,24 +132,25 @@ namespace ComputerVision
                 await LoadImageAsync(file);
 
                 // Visibility change
-                cameraGrid.Visibility = Visibility.Collapsed;
-                cropGrid.Visibility = Visibility.Visible;
-                processConfirmButton.Visibility = Visibility.Visible;
-                processCancelButton.Visibility = Visibility.Visible;
+                previewControl.Visibility = Visibility.Collapsed;
+                imageControl.Visibility = Visibility.Visible;
+                //processConfirmButton.Visibility = Visibility.Visible;
+                //processCancelButton.Visibility = Visibility.Visible;
             }
         }
-        private async void PhotoButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void QueryImageButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            await CaptureImageAsync();
+            // Capture the image frame, if previewing
+            if (_isPreviewing)
+            {
+                await CaptureImageAsync();
+            }
 
-            // Visibility change
-            cameraGrid.Visibility = Visibility.Collapsed;
-            cropGrid.Visibility = Visibility.Visible;
-            processConfirmButton.Visibility = Visibility.Visible;
-            processCancelButton.Visibility = Visibility.Visible;
-        }
-        private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
-        {
+            // Before request start, show progress ring
+            progressBackground.Visibility = Visibility.Visible;
+            requestProgress.Visibility = Visibility.Visible;
+            requestProgress.IsActive = true;
+
             // Start managing image source
             // Get image analysis as string
             var imageAnalysis = await MakeAnalysisRequest(_byteData);
@@ -158,9 +159,49 @@ namespace ComputerVision
             // 
             ProcessSearchResult(searchResult);
 
-            // Change visibility
-            processConfirmButton.Visibility = Visibility.Collapsed;
-            processCancelButton.Visibility = Visibility.Collapsed;
+            // Change/Update visibility
+            //processConfirmButton.Visibility = Visibility.Collapsed;
+            //processCancelButton.Visibility = Visibility.Collapsed;
+            progressBackground.Visibility = Visibility.Collapsed;
+            requestProgress.Visibility = Visibility.Collapsed;
+            requestProgress.IsActive = false;
+
+
+            // Visibility change
+            previewControl.Visibility = Visibility.Collapsed;
+            imageControl.Visibility = Visibility.Visible;
+            //processConfirmButton.Visibility = Visibility.Visible;
+            //processCancelButton.Visibility = Visibility.Visible;
+        }
+        private async void CloudButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // upload image file to azure cloud storage and other services
+            // *azure storage
+            // *customm computer vision service
+            // is previewing?
+            
+        }
+        private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // Before request start, show progress ring
+            progressBackground.Visibility = Visibility.Visible;            
+            requestProgress.Visibility = Visibility.Visible;
+            requestProgress.IsActive = true;
+
+            // Start managing image source
+            // Get image analysis as string
+            var imageAnalysis = await MakeAnalysisRequest(_byteData);
+            var searchResult = BingImageSearch(imageAnalysis);
+
+            // 
+            ProcessSearchResult(searchResult);
+
+            // Change/Update visibility
+            //processConfirmButton.Visibility = Visibility.Collapsed;
+            //processCancelButton.Visibility = Visibility.Collapsed;
+            progressBackground.Visibility = Visibility.Collapsed;
+            requestProgress.Visibility = Visibility.Collapsed;
+            requestProgress.IsActive = false;
         }
         private async void processCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
@@ -301,6 +342,8 @@ namespace ComputerVision
                     _mediaCapture.Dispose();
                     _mediaCapture = null;
                 });
+
+                _isPreviewing = false;
             }
 
             if (_softwareBitmap != null)
@@ -410,7 +453,7 @@ namespace ComputerVision
                 // This example uses content type "application/octet-stream".
                 // The other content types you can use are "application/json" and "multipart/form-data".
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-
+                
                 // Execute the REST API call.
                 response = await client.PostAsync(uri, content);
 
@@ -506,7 +549,7 @@ namespace ComputerVision
 
             // Add image resource list to items source
             this.ViewModel = new ImageInfoViewModel(imageResourceList);
-            ImageInfoGridView.ItemsSource = ViewModel.ImageInfoCVS;
+            ImageInfoGridView.ItemsSource = ViewModel.ImageInfoCVS;            
         }
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
@@ -639,7 +682,6 @@ namespace ComputerVision
             return sb.ToString().Trim();
         }
 
-
         #endregion Helper functions
 
 
@@ -673,7 +715,7 @@ namespace ComputerVision
         // Default Constructor
         public ImageInfoViewModel()
         {
-            var defaultCount = 12;
+            var defaultCount = 40;
             for (int i = 0; i < defaultCount; i++)
             {
                 this.imageInfoCVS.Add(new ImageInfo()

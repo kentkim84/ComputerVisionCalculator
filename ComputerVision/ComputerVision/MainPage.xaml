@@ -21,96 +21,173 @@
                 <StackPanel Margin="0, 12">
                     <TextBlock 
                         Text="{x:Bind Name}"
-                        Foreground="BlueViolet"
+                        Foreground="Brown"                        
                         Style="{ThemeResource BodyTextBlockStyle}"                         
                         HorizontalAlignment="Center"/>
                     <TextBlock 
                         Text="{x:Bind Size}"
-                        Foreground="LightGray"
+                        Foreground="SlateGray"
                         Style="{ThemeResource BodyTextBlockStyle}" 
                         HorizontalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>
         </DataTemplate>
+
     </Page.Resources>
+
+    <Page.TopAppBar>
+        <!--Command-Bar Control-->
+        <CommandBar 
+            HorizontalAlignment="Right"  
+            HorizontalContentAlignment="Left"
+            VerticalContentAlignment="Center">
+            <CommandBar.Content>
+                <TextBlock 
+                    Text="Similar Image Search Application"                    
+                    Margin="15,0,0,0"
+                    Height="48"
+                    Style="{ThemeResource TitleTextBlockStyle}"/>
+            </CommandBar.Content>
+            <!--<AppBarButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
+            <AppBarButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
+            <AppBarButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
+            <AppBarButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>-->
+        </CommandBar>
+    </Page.TopAppBar>
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <!--Grid initialisation-->
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-              
-        <TextBlock 
-            Text="Similar Image Search Application" 
-            VerticalAlignment="Center"
-            Style="{ThemeResource TitleTextBlockStyle}" 
-            Grid.Column="1"/>
-
-        <!--Command-Bar Control-->
-        <CommandBar HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0" Opacity="0.3">
-            <AppBarButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
-            <AppBarButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
-            <AppBarButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
-            <AppBarButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>
-        </CommandBar>
 
         <!--View Control-->
-        <RelativePanel x:Name="viewPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
+        <RelativePanel x:Name="viewPanel" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
             <!--Camera Control-->
-            <Grid x:Name="cameraGrid" Visibility="Visible" >
-                <!--Image Preview-->
-                <CaptureElement x:Name="previewControl" Stretch="Uniform" />
-                <Button x:Name="photoButton" Margin="0,0,20,0" HorizontalAlignment="Right" VerticalAlignment="Center" Tapped="PhotoButton_Tapped">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Grid>
-                                <Viewbox MaxWidth="40" MaxHeight="40">
-                                    <SymbolIcon Symbol="Camera"/> 
-                                </Viewbox>
-                                <Ellipse Width="60" Height="60" Fill="DarkSlateGray" Opacity="0.5" />
-                            </Grid>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-            </Grid>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <!--Crop Control-->
-            <Grid x:Name="cropGrid" Visibility="Collapsed">
-                <!--Image Captured-->
-                <Image x:Name="imageControl" Stretch="Uniform"/>
+                <TextBlock 
+                    Text="Sample Text" 
+                    Style="{StaticResource TitleTextBlockStyle}"
+                    Margin="5,0,0,0"
+                    VerticalAlignment="Center"                    
+                    Grid.Row="0" Grid.ColumnSpan="4"/>
+                <!--Image Preview-->
+                <CaptureElement 
+                    x:Name="previewControl" 
+                    Margin="15"
+                    Stretch="Uniform" 
+                    Grid.Row="1" Grid.ColumnSpan="4"/>
+                <Image 
+                    x:Name="imageControl" 
+                    Margin="15"
+                    Stretch="Uniform"
+                    Visibility="Collapsed"
+                    Grid.Row="1" Grid.ColumnSpan="4"/>
+                <!--Button Group Control-->
+                <StackPanel 
+                    HorizontalAlignment="Center" Orientation="Horizontal"                                     
+                    Grid.Row="2" Grid.ColumnSpan="4">
+                    <Button 
+                        x:Name="PreviewMediaButton" 
+                        Style="{StaticResource TextBlockButtonStyle}"                    
+                        Tapped="PreviewMediaButton_Tapped">
+                        <Viewbox MaxWidth="30" MaxHeight="30">
+                            <SymbolIcon Symbol="Camera"/>
+                        </Viewbox>
+                    </Button>
+                    <Button 
+                        x:Name="OpenFileButton" 
+                        Style="{StaticResource TextBlockButtonStyle}"                    
+                        Tapped="OpenFileButton_Tapped">
+                        <Viewbox MaxWidth="30" MaxHeight="30">
+                            <SymbolIcon Symbol="OpenFile"/>
+                        </Viewbox>
+                    </Button>
+                    <Button 
+                        x:Name="QueryImageButton" 
+                        Style="{StaticResource TextBlockButtonStyle}"                    
+                        Tapped="QueryImageButton_Tapped">
+                        <Viewbox MaxWidth="30" MaxHeight="30">
+                            <SymbolIcon Symbol="BrowsePhotos"/>
+                        </Viewbox>
+                    </Button>
+                    <Button 
+                        x:Name="cloudButton" 
+                        Style="{StaticResource TextBlockButtonStyle}"                    
+                        Tapped="CloudButton_Tapped">
+                        <Viewbox MaxWidth="30" MaxHeight="30">
+                            <SymbolIcon Symbol="Sync"/>                            
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+                
+
             </Grid>
 
         </RelativePanel>
 
         <RelativePanel Grid.Row="2" Grid.Column="0">
-            
+
         </RelativePanel>
 
-        <RelativePanel Grid.Row="1" Grid.RowSpan="2" Grid.Column="1">
-            <GridView 
-                x:Name="ImageInfoGridView"
-                Margin="0,0,0,8"      
-                Tapped="ImageInfoGridView_Tapped"
-                ItemTemplate="{StaticResource ImageGridViewTemplate}"
-                ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
-                VerticalAlignment="Center" VerticalContentAlignment="Center"
-                ScrollViewer.HorizontalScrollMode="Disabled" 
-                ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-                ScrollViewer.VerticalScrollMode="Enabled"
-                ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <GridView 
+            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+            x:Name="ImageInfoGridView"
+            Margin="0,0,0,8"      
+            Tapped="ImageInfoGridView_Tapped"
+            ItemTemplate="{StaticResource ImageGridViewTemplate}"
+            ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
+            VerticalAlignment="Top" VerticalContentAlignment="Center"
+            ScrollViewer.HorizontalScrollMode="Disabled" 
+            ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+            ScrollViewer.VerticalScrollMode="Enabled"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            ScrollViewer.ZoomMode="Enabled">
 
-                <GridView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <ItemsWrapGrid MaximumRowsOrColumns="12" Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                </GridView.ItemsPanel>
-            </GridView>
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsWrapGrid Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+        </GridView>
+
+        <RelativePanel 
+            x:Name="progressBackground"
+            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"            
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="DarkGray"            
+            Opacity="0.5" Visibility="Collapsed">
         </RelativePanel>
+
+        <ProgressRing 
+            x:Name="requestProgress" 
+            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Visibility="Collapsed"
+            IsActive="False"
+            Height="100" Width="100"/>
+
+
+
     </Grid>
 </Page>
