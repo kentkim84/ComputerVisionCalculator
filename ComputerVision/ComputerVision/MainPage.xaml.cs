@@ -111,8 +111,8 @@ namespace ComputerVision
             await InitialiseCameraAsync();
 
             // Visibility change
-            previewControl.Visibility = Visibility.Visible;
-            imageControl.Visibility = Visibility.Collapsed;
+            PreviewControl.Visibility = Visibility.Visible;
+            ImageControl.Visibility = Visibility.Collapsed;
             //processConfirmButton.Visibility = Visibility.Collapsed;
             //processCancelButton.Visibility = Visibility.Collapsed;
         }
@@ -132,8 +132,8 @@ namespace ComputerVision
                 await LoadImageAsync(file);
 
                 // Visibility change
-                previewControl.Visibility = Visibility.Collapsed;
-                imageControl.Visibility = Visibility.Visible;
+                PreviewControl.Visibility = Visibility.Collapsed;
+                ImageControl.Visibility = Visibility.Visible;
                 //processConfirmButton.Visibility = Visibility.Visible;
                 //processCancelButton.Visibility = Visibility.Visible;
             }
@@ -146,30 +146,28 @@ namespace ComputerVision
                 await CaptureImageAsync();
             }
 
-            // Before request start, show progress ring
-            progressBackground.Visibility = Visibility.Visible;
-            requestProgress.Visibility = Visibility.Visible;
-            requestProgress.IsActive = true;
+            // Before request start, show progress ring                                                
+            ProgressControlBackground.Width = ImageInfoGridView.ActualWidth;
+            ProgressControlBackground.Height = ImageInfoGridView.ActualHeight;            
+            ProgresRing.IsActive = true;            
+            ProgressControl.Visibility = Visibility.Visible;
 
             // Start managing image source
             // Get image analysis as string
-            var imageAnalysis = await MakeAnalysisRequest(_byteData);
+            var imageAnalysis = await MakeAnalysisRequest(_byteData);            
             var searchResult = BingImageSearch(imageAnalysis);
 
             // 
             ProcessSearchResult(searchResult);
 
-            // Change/Update visibility
-            //processConfirmButton.Visibility = Visibility.Collapsed;
-            //processCancelButton.Visibility = Visibility.Collapsed;
-            progressBackground.Visibility = Visibility.Collapsed;
-            requestProgress.Visibility = Visibility.Collapsed;
-            requestProgress.IsActive = false;
+            // Change/Update visibility                        
+            ProgresRing.IsActive = false;
+            ProgressControl.Visibility = Visibility.Collapsed;
 
 
             // Visibility change
-            previewControl.Visibility = Visibility.Collapsed;
-            imageControl.Visibility = Visibility.Visible;
+            PreviewControl.Visibility = Visibility.Collapsed;
+            ImageControl.Visibility = Visibility.Visible;
             //processConfirmButton.Visibility = Visibility.Visible;
             //processCancelButton.Visibility = Visibility.Visible;
         }
@@ -184,9 +182,8 @@ namespace ComputerVision
         private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             // Before request start, show progress ring
-            progressBackground.Visibility = Visibility.Visible;            
-            requestProgress.Visibility = Visibility.Visible;
-            requestProgress.IsActive = true;
+            ProgressControl.Visibility = Visibility.Visible;                        
+            ProgresRing.IsActive = true;
 
             // Start managing image source
             // Get image analysis as string
@@ -199,19 +196,19 @@ namespace ComputerVision
             // Change/Update visibility
             //processConfirmButton.Visibility = Visibility.Collapsed;
             //processCancelButton.Visibility = Visibility.Collapsed;
-            progressBackground.Visibility = Visibility.Collapsed;
-            requestProgress.Visibility = Visibility.Collapsed;
-            requestProgress.IsActive = false;
+            ProgressControl.Visibility = Visibility.Collapsed;            ;
+            ProgresRing.IsActive = false;
         }
         private async void processCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             Debug.WriteLine("Process Cancelled");
             await CleanupPreviewAndBitmapAsync();
         }        
-        private void ImageInfoGridView_Tapped(object sender, TappedRoutedEventArgs e)
+        private void ImageItem_Tapped(object sender, TappedRoutedEventArgs e)
         {
             // Move to the detail page
             //this.Frame.Navigate(typeof(Page1));
+            Debug.WriteLine("ImageInfoGridView tapped");
         }
         private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
         {
@@ -292,7 +289,7 @@ namespace ComputerVision
                 _previewProperties = _mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
 
                 // Set the camera preview and the size
-                previewControl.Source = _mediaCapture;
+                PreviewControl.Source = _mediaCapture;
                 _videoFrameHeight = (int)_previewProperties.Height;
                 _videoFrameWidth = (int)_previewProperties.Width;
 
@@ -331,7 +328,7 @@ namespace ComputerVision
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     // Cleanup the UI
-                    previewControl.Source = null;
+                    PreviewControl.Source = null;
                     if (_displayRequest != null)
                     {
                         // Allow the device screen to sleep now that the preview is stopped
@@ -393,7 +390,7 @@ namespace ComputerVision
             // Copy software bitmap buffer to writeable bitmap
             softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
             // Set UI control source
-            imageControl.Source = _imgSource;
+            ImageControl.Source = _imgSource;
         }
         private async Task<byte[]> EncodedBytes(SoftwareBitmap soft, Guid encoderId)
         {

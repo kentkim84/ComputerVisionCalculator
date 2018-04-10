@@ -71,6 +71,13 @@ namespace ComputerVision
                 // Ensure the current window is active
                 Window.Current.Activate();
             }
+
+            //#if DEBUG
+            //if (System.Diagnostics.Debugger.IsAttached)
+            //{
+            //    this.DebugSettings.IsTextPerformanceVisualizationEnabled = true;
+            //}
+            //#endif
         }
 
         /// <summary>

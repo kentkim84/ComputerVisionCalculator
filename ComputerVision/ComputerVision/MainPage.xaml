@@ -11,22 +11,30 @@
 
     <Page.Resources>
         <DataTemplate x:Key="ImageGridViewTemplate" x:DataType="local:ImageInfo">
-            <StackPanel Orientation="Vertical">
+            <StackPanel 
+                Orientation="Vertical"
+                Tapped="ImageItem_Tapped">
                 <Image 
                     Source="{x:Bind ThumbnailUrl}" 
                     Height="140" Width="140" 
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
+                    Margin="8"
                     Stretch="UniformToFill"/>
-                <StackPanel Margin="0, 12">
+                <StackPanel>
                     <TextBlock 
-                        Text="{x:Bind Name}"
-                        Foreground="Brown"                        
+                        Text="{x:Bind Name}"     
+                        MaxWidth="180"
+                        TextTrimming="WordEllipsis" 
+                        TextWrapping="Wrap"
+                        Foreground="Brown"        
+                        Margin="8,0"
+                        MaxLines="3"
                         Style="{ThemeResource BodyTextBlockStyle}"                         
                         HorizontalAlignment="Center"/>
                     <TextBlock 
                         Text="{x:Bind Size}"
-                        Foreground="SlateGray"
+                        Foreground="LightGray"
                         Style="{ThemeResource BodyTextBlockStyle}" 
                         HorizontalAlignment="Center"/>
                 </StackPanel>
@@ -68,9 +76,9 @@
         </Grid.ColumnDefinitions>
 
         <!--View Control-->
-        <RelativePanel x:Name="viewPanel" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
+        <RelativePanel x:Name="ViewPanel" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
             <!--Camera Control-->
-            <Grid>
+            <Grid MaxWidth="400">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -84,19 +92,19 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock 
-                    Text="Sample Text" 
+                    Text="Sample Image" 
                     Style="{StaticResource TitleTextBlockStyle}"
-                    Margin="5,0,0,0"
+                    Margin="15,0,0,0"
                     VerticalAlignment="Center"                    
                     Grid.Row="0" Grid.ColumnSpan="4"/>
                 <!--Image Preview-->
                 <CaptureElement 
-                    x:Name="previewControl" 
+                    x:Name="PreviewControl" 
                     Margin="15"
                     Stretch="Uniform" 
                     Grid.Row="1" Grid.ColumnSpan="4"/>
                 <Image 
-                    x:Name="imageControl" 
+                    x:Name="ImageControl" 
                     Margin="15"
                     Stretch="Uniform"
                     Visibility="Collapsed"
@@ -130,37 +138,38 @@
                         </Viewbox>
                     </Button>
                     <Button 
-                        x:Name="cloudButton" 
+                        x:Name="CloudButton" 
                         Style="{StaticResource TextBlockButtonStyle}"                    
                         Tapped="CloudButton_Tapped">
                         <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="Sync"/>                            
+                            <SymbolIcon Symbol="Sync"/>
                         </Viewbox>
                     </Button>
                 </StackPanel>
-                
 
             </Grid>
-
+        </RelativePanel>
+        
+        <!--Selected Item Info-->
+        <RelativePanel HorizontalAlignment="Center" Grid.Row="2" Grid.Column="0">
+            <Image 
+                x:Name="ItemControl" 
+                Margin="15"
+                Stretch="Uniform"
+                Visibility="Visible"/>
         </RelativePanel>
 
-        <RelativePanel Grid.Row="2" Grid.Column="0">
-
-        </RelativePanel>
-
-        <GridView 
-            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
-            x:Name="ImageInfoGridView"
-            Margin="0,0,0,8"      
-            Tapped="ImageInfoGridView_Tapped"
-            ItemTemplate="{StaticResource ImageGridViewTemplate}"
-            ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
-            VerticalAlignment="Top" VerticalContentAlignment="Center"
-            ScrollViewer.HorizontalScrollMode="Disabled" 
-            ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-            ScrollViewer.VerticalScrollMode="Enabled"
-            ScrollViewer.VerticalScrollBarVisibility="Auto"
-            ScrollViewer.ZoomMode="Enabled">
+        <GridView                     
+                Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+                x:Name="ImageInfoGridView"
+                ItemTemplate="{StaticResource ImageGridViewTemplate}"
+                ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
+                HorizontalAlignment="Center"
+                ScrollViewer.HorizontalScrollMode="Enabled" 
+                ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                ScrollViewer.VerticalScrollMode="Enabled"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                ScrollViewer.ZoomMode="Enabled">
 
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -169,25 +178,37 @@
             </GridView.ItemsPanel>
         </GridView>
 
+        <!--Loading page effect-->
         <RelativePanel 
-            x:Name="progressBackground"
+            x:Name="ProgressControl"            
             Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"            
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            Background="DarkGray"            
-            Opacity="0.5" Visibility="Collapsed">
+            Visibility="Collapsed">
+            <!--Progress and Message-->
+            <Grid
+                x:Name="ProgressControlBackground"
+                RelativePanel.AlignVerticalCenterWithPanel="True"
+                RelativePanel.AlignHorizontalCenterWithPanel="True"                
+                Opacity="0.4"
+                Background="SlateGray"/>
+            <StackPanel 
+                RelativePanel.AlignVerticalCenterWithPanel="True"
+                RelativePanel.AlignHorizontalCenterWithPanel="True"
+                Padding="15"
+                Background="White"
+                Orientation="Horizontal">
+                <ProgressRing 
+                    x:Name="ProgresRing"                    
+                    IsActive="False"
+                    Height="100" Width="100"/>
+                <TextBlock                    
+                    x:Name="ProgressMessage"
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    VerticalAlignment="Center"
+                    Padding="10,0,0,0"
+                    FontSize="30"
+                    Text="Analysing..."/>
+            </StackPanel>
         </RelativePanel>
-
-        <ProgressRing 
-            x:Name="requestProgress" 
-            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Visibility="Collapsed"
-            IsActive="False"
-            Height="100" Width="100"/>
-
-
 
     </Grid>
 </Page>
