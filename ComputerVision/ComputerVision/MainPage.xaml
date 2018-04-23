@@ -13,7 +13,7 @@
         <DataTemplate x:Key="ImageGridViewTemplate" x:DataType="local:ImageInfo">
             <StackPanel 
                 Orientation="Vertical"
-                Tapped="ImageItem_Tapped">
+                Tapped="ImageGridViewItem_Tapped">
                 <Image 
                     Source="{x:Bind ThumbnailUrl}" 
                     Height="140" Width="140" 
@@ -23,9 +23,9 @@
                     Stretch="UniformToFill"/>
                 <StackPanel>
                     <TextBlock 
-                        Text="{x:Bind Name}"     
+                        Text="{x:Bind Name}"
                         MaxWidth="180"
-                        TextTrimming="WordEllipsis" 
+                        TextTrimming="WordEllipsis"
                         TextWrapping="Wrap"
                         Foreground="Brown"        
                         Margin="8,0"
@@ -35,10 +35,103 @@
                     <TextBlock 
                         Text="{x:Bind Size}"
                         Foreground="LightGray"
-                        Style="{ThemeResource BodyTextBlockStyle}" 
+                        Style="{ThemeResource BodyTextBlockStyle}"
                         HorizontalAlignment="Center"/>
                 </StackPanel>
+                <FlyoutBase.AttachedFlyout>
+                    <Flyout Placement="Right">
+                        <Flyout.FlyoutPresenterStyle>
+                            <Style TargetType="FlyoutPresenter">
+                                <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled"/>
+                                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+                                <Setter Property="IsTabStop" Value="True"/>
+                                <Setter Property="TabNavigation" Value="Cycle"/>
+                            </Style>
+                        </Flyout.FlyoutPresenterStyle>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition MaxWidth="100"/>
+                                <ColumnDefinition MaxWidth="400"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Content Url: " Grid.Row="0" Grid.Column="0"/>
+                            <TextBlock Text="Host Page Url: " Grid.Row="1" Grid.Column="0"/>
+                            <TextBlock Text="Name: " Grid.Row="2" Grid.Column="0"/>
+                            <TextBlock Text="Size: " Grid.Row="3" Grid.Column="0"/>
+                            <TextBlock Text="Thumbnail Url: " Grid.Row="4" Grid.Column="0"/>
+                            <TextBlock 
+                                    Text="{x:Bind ContentUrl}"                                    
+                                    MaxWidth="300"
+                                    Grid.Row="0" Grid.Column="1"
+                                    TextTrimming="WordEllipsis"
+                                    TextWrapping="Wrap"
+                                    Foreground="Brown"        
+                                    Margin="8,0"
+                                    Style="{ThemeResource BodyTextBlockStyle}"                         
+                                    HorizontalAlignment="Left"/>
+                            <TextBlock 
+                                    Text="{x:Bind HostPageUrl}"
+                                    MaxWidth="300"
+                                    Grid.Row="1" Grid.Column="1"
+                                    TextTrimming="WordEllipsis"
+                                    TextWrapping="Wrap"
+                                    Foreground="Brown"        
+                                    Margin="8,0"
+                                    Style="{ThemeResource BodyTextBlockStyle}"                         
+                                    HorizontalAlignment="Left"/>
+                            <TextBlock 
+                                    Text="{x:Bind Name}"
+                                    MaxWidth="300"
+                                    Grid.Row="2" Grid.Column="1"
+                                    TextTrimming="WordEllipsis"
+                                    TextWrapping="Wrap"
+                                    Foreground="Brown"        
+                                    Margin="8,0"
+                                    Style="{ThemeResource BodyTextBlockStyle}"                         
+                                    HorizontalAlignment="Left"/>
+                            <TextBlock 
+                                    Text="{x:Bind Size}"
+                                    MaxWidth="300"
+                                    Grid.Row="3" Grid.Column="1"
+                                    TextTrimming="WordEllipsis"
+                                    TextWrapping="Wrap"
+                                    Foreground="Brown"        
+                                    Margin="8,0"
+                                    Style="{ThemeResource BodyTextBlockStyle}"                         
+                                    HorizontalAlignment="Left"/>
+                            <TextBlock 
+                                    Text="{x:Bind ThumbnailUrl}"
+                                    MaxWidth="300"
+                                    Grid.Row="4" Grid.Column="1"
+                                    TextTrimming="WordEllipsis"
+                                    TextWrapping="Wrap"
+                                    Foreground="Brown"        
+                                    Margin="8,0"
+                                    Style="{ThemeResource BodyTextBlockStyle}"                         
+                                    HorizontalAlignment="Left"/>
+                            <Button Content="Download" Tapped="FlyoutButton_Tapped" Grid.Row="5" Grid.ColumnSpan="2" />
+                        </Grid>
+                    </Flyout>
+                </FlyoutBase.AttachedFlyout>
+                
             </StackPanel>
+        </DataTemplate>
+        
+        <DataTemplate x:Key="AnalysisListViewTemplate" x:DataType="local:AnalysisInfo">
+            <TextBlock 
+                x:Name="SelectedItem"                
+                Text="{x:Bind Tag}"
+                Foreground="Brown"
+                MaxWidth="150"
+                TextTrimming="CharacterEllipsis"/>
         </DataTemplate>
 
     </Page.Resources>
@@ -51,15 +144,15 @@
             VerticalContentAlignment="Center">
             <CommandBar.Content>
                 <TextBlock 
-                    Text="Similar Image Search Application"                    
+                    Text="Image Analysis and Search Application"                    
                     Margin="15,0,0,0"
-                    Height="48"
                     Style="{ThemeResource TitleTextBlockStyle}"/>
             </CommandBar.Content>
-            <!--<AppBarButton x:Name="cameraButton" Icon="Camera" Label="Camera" Tapped="CameraButton_Tapped"/>
-            <AppBarButton x:Name="fileButton" Icon="OpenFile" Label="Open File" Tapped="FileButton_Tapped"/>
-            <AppBarButton x:Name="processConfirmButton" Icon="Accept" Label="Accept" Tapped="processConfirmButton_Tapped" Visibility="Collapsed"/>
-            <AppBarButton x:Name="processCancelButton" Icon="Cancel" Label="Calcel" Tapped="processCancelButton_Tapped" Visibility="Collapsed"/>-->
+            <AppBarButton x:Name="PreviewMediaButton" Icon="Camera" Label="Preview" Tapped="PreviewMediaButton_Tapped"/>
+            <AppBarButton x:Name="OpenFileButton" Icon="OpenFile" Label="Open" Tapped="OpenFileButton_Tapped"/>
+            <AppBarButton x:Name="QueryImageButton" Icon="Tag" Label="Analise" Tapped="QueryImageButton_Tapped"/>
+            <AppBarButton x:Name="SearchImagesButton" Icon="BrowsePhotos" Label="Search Images" Tapped="SearchImagesButton_Tapped" Visibility="Collapsed"/>
+            <AppBarButton x:Name="SaveImagesButton" Icon="Save" Label="Save All" Tapped="SaveImagesButton_Tapped" Visibility="Collapsed"/>
         </CommandBar>
     </Page.TopAppBar>
 
@@ -67,8 +160,7 @@
         <!--Grid initialisation-->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition/>
-            <RowDefinition/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -76,13 +168,13 @@
         </Grid.ColumnDefinitions>
 
         <!--View Control-->
-        <RelativePanel x:Name="ViewPanel" HorizontalAlignment="Center" Grid.Row="1" Grid.Column="0">
+        <StackPanel x:Name="ImageViewPanel" Grid.Row="0" Grid.Column="0">
             <!--Camera Control-->
-            <Grid MaxWidth="400">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -92,25 +184,19 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock 
-                    Text="Sample Image" 
+                    Text="Sample Image to Analise" 
                     Style="{StaticResource TitleTextBlockStyle}"
-                    Margin="15,0,0,0"
-                    VerticalAlignment="Center"                    
+                    HorizontalAlignment="Center"                    
                     Grid.Row="0" Grid.ColumnSpan="4"/>
                 <!--Image Preview-->
-                <CaptureElement 
-                    x:Name="PreviewControl" 
-                    Margin="15"
-                    Stretch="Uniform" 
-                    Grid.Row="1" Grid.ColumnSpan="4"/>
-                <Image 
-                    x:Name="ImageControl" 
-                    Margin="15"
-                    Stretch="Uniform"
-                    Visibility="Collapsed"
-                    Grid.Row="1" Grid.ColumnSpan="4"/>
+                <Grid
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Grid.Row="1" Grid.ColumnSpan="4" MaxHeight="300">
+                    <CaptureElement x:Name="ImagePreview" Margin="15" Stretch="Uniform"/>
+                    <Image x:Name="ImageView" Stretch="Uniform" Margin="15" Visibility="Collapsed"/>
+                </Grid>
                 <!--Button Group Control-->
-                <StackPanel 
+                <!--<StackPanel 
                     HorizontalAlignment="Center" Orientation="Horizontal"                                     
                     Grid.Row="2" Grid.ColumnSpan="4">
                     <Button 
@@ -130,47 +216,97 @@
                         </Viewbox>
                     </Button>
                     <Button 
-                        x:Name="QueryImageButton" 
+                        x:Name="QueryImageButton"
                         Style="{StaticResource TextBlockButtonStyle}"                    
                         Tapped="QueryImageButton_Tapped">
+                        <Viewbox MaxWidth="30" MaxHeight="30">
+                            <SymbolIcon Symbol="Tag"/>
+                        </Viewbox>
+                    </Button>
+                    <Button 
+                        x:Name="SearchImagesButton" 
+                        Style="{StaticResource TextBlockButtonStyle}"                    
+                        Tapped="SearchImagesButton_Tapped"
+                        Visibility="Collapsed">
                         <Viewbox MaxWidth="30" MaxHeight="30">
                             <SymbolIcon Symbol="BrowsePhotos"/>
                         </Viewbox>
                     </Button>
-                    <Button 
-                        x:Name="CloudButton" 
-                        Style="{StaticResource TextBlockButtonStyle}"                    
-                        Tapped="CloudButton_Tapped">
-                        <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="Sync"/>
-                        </Viewbox>
-                    </Button>
-                </StackPanel>
+                </StackPanel>-->
 
             </Grid>
-        </RelativePanel>
-        
-        <!--Selected Item Info-->
-        <RelativePanel HorizontalAlignment="Center" Grid.Row="2" Grid.Column="0">
-            <Image 
-                x:Name="ItemControl" 
-                Margin="15"
-                Stretch="Uniform"
-                Visibility="Visible"/>
-        </RelativePanel>
+        </StackPanel>
+
+        <!--Base Image Info and Search Result Info-->
+        <StackPanel x:Name="ListViewPanel" Grid.Row="2" Grid.Column="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <ListView                     
+                    Grid.Row="0"
+                    x:Name="AnalysisInfoListView"                                
+                    ItemTemplate="{StaticResource AnalysisListViewTemplate}"
+                    ItemsSource="{x:Bind AnalysisViewModel.AnalysisInfoCVS}"
+                    SelectionMode="Single"
+                    SelectionChanged="AnalysisInfoListView_SelectionChanged"
+                    ScrollViewer.HorizontalScrollMode="Disabled" 
+                    ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                    ScrollViewer.VerticalScrollMode="Enabled"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.Header>
+                        <TextBlock 
+                            Text="Searched Tags List" 
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource TitleTextBlockStyle}"/>
+                    </ListView.Header>
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid MaximumRowsOrColumns="5" Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                </ListView>
+
+                <ListView
+                    Grid.Row="1"
+                    x:Name="AnalysisInfoStatusListView"
+                    SelectionMode="Single"
+                    SelectionChanged="AnalysisInfoListView_SelectionChanged"
+                    Visibility="Collapsed"
+                    ScrollViewer.HorizontalScrollMode="Disabled" 
+                    ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                    ScrollViewer.VerticalScrollMode="Enabled"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.Header>
+                        <TextBlock 
+                            Text="Selected Tags List" 
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource TitleTextBlockStyle}"/>
+                    </ListView.Header>
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid MaximumRowsOrColumns="5" Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                </ListView>
+            </Grid>
+        </StackPanel>
+
 
         <GridView                     
-                Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+                Grid.RowSpan="2" Grid.Column="1"
                 x:Name="ImageInfoGridView"
+                SelectionMode="Single"
+                SelectionChanged="ImageInfoGridView_SelectionChanged"
                 ItemTemplate="{StaticResource ImageGridViewTemplate}"
-                ItemsSource="{x:Bind ViewModel.ImageInfoCVS}"
+                ItemsSource="{x:Bind ImageViewModel.ImageInfoCVS}"
                 HorizontalAlignment="Center"
                 ScrollViewer.HorizontalScrollMode="Enabled" 
                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
                 ScrollViewer.VerticalScrollMode="Enabled"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                 ScrollViewer.ZoomMode="Enabled">
-
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
                     <ItemsWrapGrid Orientation="Horizontal"/>
@@ -179,36 +315,62 @@
         </GridView>
 
         <!--Loading page effect-->
-        <RelativePanel 
-            x:Name="ProgressControl"            
-            Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"            
+
+        <Grid 
+            x:Name="AnalysisProgressControl"
+            Grid.Row="1" Grid.Column="0"          
             Visibility="Collapsed">
             <!--Progress and Message-->
-            <Grid
-                x:Name="ProgressControlBackground"
-                RelativePanel.AlignVerticalCenterWithPanel="True"
-                RelativePanel.AlignHorizontalCenterWithPanel="True"                
+            <StackPanel
+                x:Name="AnalysisProgressBackground"           
                 Opacity="0.4"
-                Background="SlateGray"/>
-            <StackPanel 
-                RelativePanel.AlignVerticalCenterWithPanel="True"
-                RelativePanel.AlignHorizontalCenterWithPanel="True"
-                Padding="15"
-                Background="White"
+                Background="LightGray"/>
+            <StackPanel                 
+                Background="GhostWhite"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
                 Orientation="Horizontal">
                 <ProgressRing 
-                    x:Name="ProgresRing"                    
+                    x:Name="AnalysisProgresRing"                    
                     IsActive="False"
-                    Height="100" Width="100"/>
+                    Margin="5"
+                    Height="50" Width="50"/>
                 <TextBlock                    
-                    x:Name="ProgressMessage"
+                    x:Name="AnalysisProgressMessage"
                     Style="{StaticResource BodyTextBlockStyle}"
                     VerticalAlignment="Center"
-                    Padding="10,0,0,0"
+                    Padding="0,5,5,5"
+                    FontSize="20"
+                    Text="Analysing..."/>
+            </StackPanel>
+        </Grid>
+
+        <Grid 
+            x:Name="SearchProgressControl"
+            Grid.RowSpan="2" Grid.Column="1"          
+            Visibility="Collapsed">
+            <!--Progress and Message-->
+            <StackPanel
+                x:Name="SearchProgressBackground"           
+                Opacity="0.4"
+                Background="LightGray"/>
+            <StackPanel                 
+                Background="GhostWhite"                
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Orientation="Horizontal">
+                <ProgressRing 
+                    x:Name="SearchProgresRing"                    
+                    IsActive="False"
+                    Margin="10"
+                    Height="100" Width="100"/>
+                <TextBlock                    
+                    x:Name="SearchProgressMessage"
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    VerticalAlignment="Center"
+                    Padding="0,10,10,10"
                     FontSize="30"
                     Text="Analysing..."/>
             </StackPanel>
-        </RelativePanel>
+        </Grid>
 
     </Grid>
 </Page>

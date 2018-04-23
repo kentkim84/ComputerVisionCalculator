@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Foundation;
@@ -19,6 +21,7 @@ using Windows.Graphics.Imaging;
 using Windows.Media;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
+using Windows.Networking.BackgroundTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
@@ -80,11 +83,13 @@ namespace ComputerVision
 
         public MainPage()
         {
-            this.InitializeComponent();
-            this.ViewModel = new ImageInfoViewModel();
+            this.InitializeComponent();            
+            this.ImageViewModel = new ImageInfoViewModel();
+            this.AnalysisViewModel = new AnalysisInfoViewModel();
             Application.Current.Suspending += Application_Suspending;
         }
-        public ImageInfoViewModel ViewModel { get; set; }
+        public ImageInfoViewModel ImageViewModel { get; set; }
+        public AnalysisInfoViewModel AnalysisViewModel { get; set; }
         private async void Application_Suspending(object sender, SuspendingEventArgs e)
         {
             // Handle global application events only if this page is active
@@ -97,7 +102,7 @@ namespace ComputerVision
         }
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
-            await InitialiseCameraAsync();
+            await InitialiseCameraAsync();            
         }
 
         #endregion Constructor, lifecycle and navigation
@@ -109,33 +114,36 @@ namespace ComputerVision
         private async void PreviewMediaButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
             await InitialiseCameraAsync();
-
+            CleanUpSelectedListViewItems();
             // Visibility change
-            PreviewControl.Visibility = Visibility.Visible;
-            ImageControl.Visibility = Visibility.Collapsed;
-            //processConfirmButton.Visibility = Visibility.Collapsed;
-            //processCancelButton.Visibility = Visibility.Collapsed;
-        }
+            ImagePreview.Visibility = Visibility.Visible;
+            ImageView.Visibility = Visibility.Collapsed;
+            QueryImageButton.Visibility = Visibility.Visible;
+            SearchImagesButton.Visibility = Visibility.Collapsed;
+            SaveImagesButton.Visibility = Visibility.Collapsed;
+        }        
         private async void OpenFileButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            var picker = new FileOpenPicker()
+            var openPicker = new FileOpenPicker()
             {
                 SuggestedStartLocation = PickerLocationId.PicturesLibrary,
                 FileTypeFilter = { ".jpg", ".jpeg", ".png" },
             };
 
-            var file = await picker.PickSingleFileAsync();
+            var file = await openPicker.PickSingleFileAsync();
 
             if (file != null)
             {
-                await CleanupPreviewAndBitmapAsync();
+                await CleanUpPreviewAndBitmapAsync();
                 await LoadImageAsync(file);
 
+                CleanUpSelectedListViewItems();
                 // Visibility change
-                PreviewControl.Visibility = Visibility.Collapsed;
-                ImageControl.Visibility = Visibility.Visible;
-                //processConfirmButton.Visibility = Visibility.Visible;
-                //processCancelButton.Visibility = Visibility.Visible;
+                ImagePreview.Visibility = Visibility.Collapsed;
+                ImageView.Visibility = Visibility.Visible;
+                QueryImageButton.Visibility = Visibility.Visible;
+                SearchImagesButton.Visibility = Visibility.Collapsed;
+                SaveImagesButton.Visibility = Visibility.Collapsed;
             }
         }
         private async void QueryImageButton_Tapped(object sender, TappedRoutedEventArgs e)
@@ -146,88 +154,131 @@ namespace ComputerVision
                 await CaptureImageAsync();
             }
 
-            // Before request start, show progress ring                                                
-            ProgressControlBackground.Width = ImageInfoGridView.ActualWidth;
-            ProgressControlBackground.Height = ImageInfoGridView.ActualHeight;            
-            ProgresRing.IsActive = true;            
-            ProgressControl.Visibility = Visibility.Visible;
+            //GetChangedSizeUpdate();
+
+            // Before request start, show progress ring                                                                        
+            AnalysisProgresRing.IsActive = true;
+            AnalysisProgressControl.Visibility = Visibility.Visible;
 
             // Start managing image source
             // Get image analysis as string
-            var imageAnalysis = await MakeAnalysisRequest(_byteData);            
-            var searchResult = BingImageSearch(imageAnalysis);
+            var jsonContent = await MakeAnalysisRequest(_byteData);
+            ProcessJsonContent(jsonContent);
+            
+            // Change/Update visibility                        
+            AnalysisProgresRing.IsActive = false;
+            AnalysisProgressControl.Visibility = Visibility.Collapsed;
+            ImagePreview.Visibility = Visibility.Collapsed;
+            ImageView.Visibility = Visibility.Visible;
+            QueryImageButton.Visibility = Visibility.Collapsed;
+            SearchImagesButton.Visibility = Visibility.Visible;
+        }        
+        private async void SearchImagesButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            StringBuilder sb = new StringBuilder();
 
-            // 
+            if (AnalysisInfoStatusListView.Items.Count > 0)
+            {                                                
+                foreach (TextBlock item in AnalysisInfoStatusListView.Items)
+                {                    
+                    sb.Append(item.Text + " ");
+                }                                
+            }
+            else
+            {
+                foreach (AnalysisInfo item in AnalysisInfoListView.Items)
+                {
+                    sb.Append(item.Tag + " ");
+
+                    var textBlock = new TextBlock();
+                    textBlock.Text = item.Tag;
+                    AnalysisInfoStatusListView.Items.Add(textBlock); 
+                }
+            }
+
+            AnalysisInfoStatusListViewContentsUpdate();
+
+            // Before request start, show progress ring                                                            
+            SearchProgresRing.IsActive = true;
+            SearchProgressControl.Visibility = Visibility.Visible;
+
+            // Request similar images search
+            var searchResult = await BingImageSearch(sb.ToString());
+            // Put result into collection view source model
             ProcessSearchResult(searchResult);
 
             // Change/Update visibility                        
-            ProgresRing.IsActive = false;
-            ProgressControl.Visibility = Visibility.Collapsed;
-
-
-            // Visibility change
-            PreviewControl.Visibility = Visibility.Collapsed;
-            ImageControl.Visibility = Visibility.Visible;
-            //processConfirmButton.Visibility = Visibility.Visible;
-            //processCancelButton.Visibility = Visibility.Visible;
+            SearchProgresRing.IsActive = false;
+            SearchProgressControl.Visibility = Visibility.Collapsed;
+            SaveImagesButton.Visibility = Visibility.Visible;
         }
-        private async void CloudButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void SaveImagesButton_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // upload image file to azure cloud storage and other services
-            // *azure storage
-            // *customm computer vision service
-            // is previewing?
+            if (ImageInfoGridView.Items.Count > 0)
+            {
+                foreach (ImageInfo item in ImageInfoGridView.Items)
+                {
+                    await SaveMultipleImagesAsync(new Uri(item.ContentUrl));
+                }
+            }            
+        }        
+        private void AnalysisInfoListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {            
+            var obj = sender as ListView;                                    
+            if (obj.Name == "AnalysisInfoListView")
+            {
+                Debug.WriteLine("Defiened Object {0}, Name: {1}", sender.GetType(), obj.Name);
+                var selectedItem = AnalysisInfoListView.SelectedItem as AnalysisInfo;
+                if (selectedItem != null)
+                {
+                    var textBlock = new TextBlock();
+                    textBlock.Text = selectedItem.Tag;                    
+                    AnalysisInfoStatusListView.Items.Add(textBlock);
+                }                
+            }
+            else if (obj.Name == "AnalysisInfoStatusListView")
+            {
+                Debug.WriteLine("Defiened Object {0}, Name: {1}", sender.GetType(), obj.Name);
+                var selectedItem = AnalysisInfoStatusListView.SelectedItem as TextBlock;                
+                AnalysisInfoStatusListView.Items.Remove(selectedItem);
+            }
+            else
+            {
+                Debug.WriteLine("Not Defiened Object {0}", sender.GetType());
+            }
+
+            AnalysisInfoStatusListViewContentsUpdate();
             
         }
-        private async void processConfirmButton_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void ImageInfoGridView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {                        
+        }
+        private void ImageGridViewItem_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // Before request start, show progress ring
-            ProgressControl.Visibility = Visibility.Visible;                        
-            ProgresRing.IsActive = true;
+            FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
+        }
+        private async void FlyoutButton_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            var selectedItem = ImageInfoGridView.SelectedItem as ImageInfo;
+            if (selectedItem != null)
+            {
+                var savePicker = new FileSavePicker()
+                {
+                    SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+                    DefaultFileExtension = ".png"
+                };
+                savePicker.FileTypeChoices.Add("PNG Image Type", new List<string> { ".png" });
+                savePicker.FileTypeChoices.Add("GIF Image Type", new List<string> { ".gif" });
+                savePicker.FileTypeChoices.Add("JPEG Image Type", new List<string> { ".jpg" });
 
-            // Start managing image source
-            // Get image analysis as string
-            var imageAnalysis = await MakeAnalysisRequest(_byteData);
-            var searchResult = BingImageSearch(imageAnalysis);
+                var file = await savePicker.PickSaveFileAsync();
 
-            // 
-            ProcessSearchResult(searchResult);
-
-            // Change/Update visibility
-            //processConfirmButton.Visibility = Visibility.Collapsed;
-            //processCancelButton.Visibility = Visibility.Collapsed;
-            ProgressControl.Visibility = Visibility.Collapsed;            ;
-            ProgresRing.IsActive = false;
-        }
-        private async void processCancelButton_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            Debug.WriteLine("Process Cancelled");
-            await CleanupPreviewAndBitmapAsync();
-        }        
-        private void ImageItem_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            // Move to the detail page
-            //this.Frame.Navigate(typeof(Page1));
-            Debug.WriteLine("ImageInfoGridView tapped");
-        }
-        private void Rect_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
-        {
-            //rectangle.Opacity = 0.5;
-        }
-        private void Rect_ManipulationDelta(object sender, ManipulationDeltaRoutedEventArgs e)
-        {
-            //, PointerRoutedEventArgs e2
-            //_pt = e2.GetCurrentPoint(this);
-            // translate
-            //rectTransform.TranslateX += e.Delta.Translation.X;
-            //rectTransform.TranslateY += e.Delta.Translation.Y;
-            // scale
-            //rectTransform.ScaleX += 0.01;
-            //rectTransform.ScaleY += 0.01;
-        }
-        private void Rect_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
-        {
-            //rectangle.Opacity = 0.3;
+                if (file != null && selectedItem.ContentUrl != null)
+                {
+                    // Download images and store in the local storage
+                    await SaveSingleImageAsync(file, selectedItem.ContentUrl);
+                }
+            }
         }
 
         #endregion Event handlers
@@ -238,7 +289,7 @@ namespace ComputerVision
 
         private async Task InitialiseCameraAsync()
         {
-            await CleanupPreviewAndBitmapAsync();
+            await CleanUpPreviewAndBitmapAsync();
 
             if (_mediaCapture == null)
             {
@@ -289,7 +340,7 @@ namespace ComputerVision
                 _previewProperties = _mediaCapture.VideoDeviceController.GetMediaStreamProperties(MediaStreamType.VideoPreview) as VideoEncodingProperties;
 
                 // Set the camera preview and the size
-                PreviewControl.Source = _mediaCapture;
+                ImagePreview.Source = _mediaCapture;
                 _videoFrameHeight = (int)_previewProperties.Height;
                 _videoFrameWidth = (int)_previewProperties.Width;
 
@@ -316,7 +367,7 @@ namespace ComputerVision
             }
 
         }
-        private async Task CleanupPreviewAndBitmapAsync()
+        private async Task CleanUpPreviewAndBitmapAsync()
         {
             if (_mediaCapture != null)
             {
@@ -328,7 +379,7 @@ namespace ComputerVision
                 await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     // Cleanup the UI
-                    PreviewControl.Source = null;
+                    ImagePreview.Source = null;
                     if (_displayRequest != null)
                     {
                         // Allow the device screen to sleep now that the preview is stopped
@@ -360,7 +411,7 @@ namespace ComputerVision
                 // Create softwarebitmap from current video frame
                 _softwareBitmap = currentFrame.SoftwareBitmap;
                 // Set image source
-                await SetImageControlSource(_softwareBitmap);
+                await SetImageViewSource(_softwareBitmap);
             }
         }
         private async Task LoadImageAsync(StorageFile file)
@@ -371,7 +422,46 @@ namespace ComputerVision
                 // Create software bitmap from file stream
                 _softwareBitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
                 // Set image source
-                await SetImageControlSource(_softwareBitmap);
+                await SetImageViewSource(_softwareBitmap);
+                fileStream.Dispose();
+            }
+        }
+        private async Task SaveMultipleImagesAsync(Uri uriAddress)
+        {
+            var destinationFile = await KnownFolders.PicturesLibrary.CreateFileAsync("image.png", CreationCollisionOption.GenerateUniqueName);
+            BackgroundDownloader downloader = new BackgroundDownloader();
+            DownloadOperation downloadOperation = downloader.CreateDownload(uriAddress, destinationFile);
+
+            // Define the cancellation token.
+            CancellationTokenSource cts = new CancellationTokenSource();
+            CancellationToken token = cts.Token;
+
+            // Time out after 5000 milliseconds
+            cts.CancelAfter(5000);
+            try
+            {
+                // Pass the token to the task that listens for cancellation.
+                await downloadOperation.StartAsync().AsTask(token);
+                // file is downloaded in time
+            }
+            catch (TaskCanceledException)
+            {
+                // timeout is reached, downloadOperation is cancled
+            }
+            finally
+            {
+                // Releases all resources of cts
+                cts.Dispose();
+            }
+        }
+        private async Task SaveSingleImageAsync(StorageFile file, string uri)
+        {
+            using (var fileStream = await file.OpenStreamForWriteAsync())
+            {
+                var client = new HttpClient();
+                var httpStream = await client.GetStreamAsync(uri);
+                await httpStream.CopyToAsync(fileStream);
+                fileStream.Dispose();
             }
         }
 
@@ -381,7 +471,7 @@ namespace ComputerVision
 
         #region Helper functions
 
-        private async Task SetImageControlSource(SoftwareBitmap softwareBitmap)
+        private async Task SetImageViewSource(SoftwareBitmap softwareBitmap)
         {
             // Get byte array from software bitmap
             _byteData = await EncodedBytes(softwareBitmap, BitmapEncoder.JpegEncoderId);
@@ -390,9 +480,9 @@ namespace ComputerVision
             // Copy software bitmap buffer to writeable bitmap
             softwareBitmap.CopyToBuffer(_imgSource.PixelBuffer);
             // Set UI control source
-            ImageControl.Source = _imgSource;
+            ImageView.Source = _imgSource;
         }
-        private async Task<byte[]> EncodedBytes(SoftwareBitmap soft, Guid encoderId)
+        private async Task<byte[]> EncodedBytes(SoftwareBitmap softwareBitmap, Guid encoderId)
         {
             byte[] array = null;
 
@@ -402,14 +492,18 @@ namespace ComputerVision
             using (var ms = new InMemoryRandomAccessStream())
             {
                 BitmapEncoder encoder = await BitmapEncoder.CreateAsync(encoderId, ms);
-                encoder.SetSoftwareBitmap(soft);
+                encoder.SetSoftwareBitmap(softwareBitmap);
 
                 try
                 {
                     await encoder.FlushAsync();
                 }
-                catch (Exception ex) { return new byte[0]; }
-
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e.StackTrace);
+                    return new byte[0];
+                }
+                
                 array = new byte[ms.Size];
                 await ms.ReadAsync(array.AsBuffer(), (uint)ms.Size, InputStreamOptions.None);
             }
@@ -430,7 +524,7 @@ namespace ComputerVision
             }
         }
         // Gets the analysis of the specified image file by using the Computer Vision REST API.
-        private static async Task<string> MakeAnalysisRequest(byte[] _byteData)
+        private async Task<string> MakeAnalysisRequest(byte[] _byteData)
         {
             HttpClient client = new HttpClient();
 
@@ -455,63 +549,100 @@ namespace ComputerVision
                 response = await client.PostAsync(uri, content);
 
                 // Get the JSON response.
-                var contentString = await response.Content.ReadAsStringAsync();
+                var jsonContent = await response.Content.ReadAsStringAsync();
 
                 // Display the JSON response.
-                //Debug.WriteLine("\nResponse:\n");
-                //Debug.WriteLine(JsonPrettyPrintCV(contentString));                
+                //Debug.WriteLine("\nAnalysis Response:\n");
+                //Debug.WriteLine(JsonPrettyPrintCV(jsonContent));                
 
-                return ProcessJsonContent(contentString);
+                return jsonContent;
             }
         }
-        private static string ProcessJsonContent(string jsonContent)
+        private string ProcessJsonContent(string jsonContent)
         {
             if (string.IsNullOrEmpty(jsonContent))
                 return string.Empty;
 
             // Get tags and captions
             JObject jObject = JObject.Parse(jsonContent);
-            IList<JToken> jArray = jObject["description"]["captions"].Children().ToList();
-            var result = (string)jArray[0]["text"];
+            var descriptionJObject = (JObject)jObject["description"];
+            IList<JToken> jArray = descriptionJObject["tags"].Children().ToList();
+            var result = (string)descriptionJObject["captions"][0]["text"];
 
-            Debug.WriteLine(result);
+            List<AnalysisInfo> analysisResourceList = new List<AnalysisInfo>();
+            
+            // Retrieve elements from the value
+            foreach (JToken t in jArray)
+            {
+                var tag = new AnalysisInfo { Tag = (string)t };
+                // Add item into List
+                analysisResourceList.Add(tag);
+            }
+
+            // Add image analysis resource list to items source
+            this.AnalysisViewModel = new AnalysisInfoViewModel(analysisResourceList);
+            AnalysisInfoListView.ItemsSource = AnalysisViewModel.AnalysisInfoCVS;
+
+            //Debug.WriteLine(result);
             return result;
         }
         // Performs a Bing Image search and return the results as a SearchResult.        
-        private string BingImageSearch(string searchQuery)
+        private async Task<string> BingImageSearch(string searchQuery)
         {
+            HttpClient client = new HttpClient();
+
+            // Request headers.
+            client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", accessKeyBing);
+
             // Construct the URI of the search request
             var uriQuery = uriBaseBing + "?q=" + Uri.EscapeDataString(searchQuery);
 
-            // Perform the Web request and get the response
-            WebRequest request = HttpWebRequest.Create(uriQuery);
-            request.Headers["Ocp-Apim-Subscription-Key"] = accessKeyBing;
-            HttpWebResponse response = (HttpWebResponse)request.GetResponseAsync().Result;
-            string json = new StreamReader(response.GetResponseStream()).ReadToEnd();
+            HttpResponseMessage response;
+            // Execute the REST API call.
+            response = await client.GetAsync(uriQuery);
 
-            // Create result object for return
-            var searchResult = new SearchResult()
-            {
-                jsonResult = json,
-                relevantHeaders = new Dictionary<String, String>()
-            };
+            // Get the JSON response.
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            
+            //Debug.WriteLine("\nSearch Response:\n");
+            //Debug.WriteLine(JsonPrettyPrintBing(jsonContent));
 
-            // Extract Bing HTTP headers
-            foreach (String header in response.Headers)
-            {
-                if (header.StartsWith("BingAPIs-") || header.StartsWith("X-MSEdge-"))
-                    searchResult.relevantHeaders[header] = response.Headers[header];
-            }
-
-            Debug.WriteLine("\nRelevant HTTP Headers:\n");
-            foreach (var header in searchResult.relevantHeaders)
-                Debug.WriteLine(header.Key + ": " + header.Value);
-
-            //Debug.WriteLine("\nJSON Response:\n");
-            //Debug.WriteLine(JsonPrettyPrintBing(searchResult.jsonResult));
-
-            return searchResult.jsonResult;
+            return jsonContent;            
         }
+        //private async Task<string> BingImageSearch(string searchQuery)
+        //{
+        //    // Construct the URI of the search request
+        //    var uriQuery = uriBaseBing + "?q=" + Uri.EscapeDataString(searchQuery);
+
+        //    // Perform the Web request and get the response
+        //    WebRequest request = HttpWebRequest.Create(uriQuery);
+        //    request.Headers["Ocp-Apim-Subscription-Key"] = accessKeyBing;
+        //    HttpWebResponse response = (HttpWebResponse)request.GetResponseAsync().Result;
+        //    string json = new StreamReader(response.GetResponseStream()).ReadToEnd();
+
+        //    // Create result object for return
+        //    var searchResult = new SearchResult()
+        //    {
+        //        jsonResult = json,
+        //        relevantHeaders = new Dictionary<String, String>()
+        //    };
+
+        //    // Extract Bing HTTP headers
+        //    foreach (String header in response.Headers)
+        //    {
+        //        if (header.StartsWith("BingAPIs-") || header.StartsWith("X-MSEdge-"))
+        //            searchResult.relevantHeaders[header] = response.Headers[header];
+        //    }
+
+        //    Debug.WriteLine("\nRelevant HTTP Headers:\n");
+        //    foreach (var header in searchResult.relevantHeaders)
+        //        Debug.WriteLine(header.Key + ": " + header.Value);
+
+        //    //Debug.WriteLine("\nSearch Response:\n");
+        //    //Debug.WriteLine(JsonPrettyPrintBing(searchResult.jsonResult));
+
+        //    return searchResult.jsonResult;
+        //}
         private void ProcessSearchResult(string searchResult)
         {
             JObject jObject = JObject.Parse(searchResult);
@@ -545,8 +676,8 @@ namespace ComputerVision
             }
 
             // Add image resource list to items source
-            this.ViewModel = new ImageInfoViewModel(imageResourceList);
-            ImageInfoGridView.ItemsSource = ViewModel.ImageInfoCVS;            
+            this.ImageViewModel = new ImageInfoViewModel(imageResourceList);
+            ImageInfoGridView.ItemsSource = ImageViewModel.ImageInfoCVS;            
         }
         // Formats the given JSON string by adding line breaks and indents.
         private static string JsonPrettyPrintCV(string json)
@@ -677,11 +808,33 @@ namespace ComputerVision
             }
 
             return sb.ToString().Trim();
+        }        
+        private void CleanUpSelectedListViewItems()
+        {
+            // Remove all Items from the list view container
+            AnalysisInfoStatusListView.Items.Clear();
+        }
+        private void AnalysisInfoStatusListViewContentsUpdate()
+        {
+            // Check if listview has items
+            if (AnalysisInfoStatusListView.Items.Count() > 0)
+            {
+                GetChangedSizeUpdate();
+                AnalysisInfoStatusListView.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                AnalysisInfoStatusListView.Visibility = Visibility.Collapsed;
+            }                        
+        }
+        private void GetChangedSizeUpdate()
+        {
+            AnalysisInfoStatusListView.MaxWidth = ListViewPanel.ActualWidth;
+            AnalysisInfoStatusListView.MaxHeight = ListViewPanel.ActualHeight - AnalysisInfoListView.ActualHeight;
         }
 
-        #endregion Helper functions
 
-
+        #endregion Helper functions        
     }
     public static class Extensions
     {
@@ -737,5 +890,37 @@ namespace ComputerVision
     {
         public int width { get; set; }
         public int height { get; set; }
+    }
+    public class AnalysisInfo
+    {
+        // Auto-Impl Properties for trivial get and set
+        public string Tag { get; set; }
+    }
+    public class AnalysisInfoViewModel
+    {
+        private ObservableCollection<AnalysisInfo> analysisInfoCVS = new ObservableCollection<AnalysisInfo>();
+
+        // Default Constructor
+        public AnalysisInfoViewModel()
+        {
+            var defaultCount = 40;
+            for (int i = 0; i < defaultCount; i++)
+            {
+                this.analysisInfoCVS.Add(new AnalysisInfo()
+                {
+                    Tag = "Default Tag"                    
+                });
+            }
+        }
+        // Add each imageResource into observable collection
+        public AnalysisInfoViewModel(List<AnalysisInfo> anaylsisResourceList)
+        {
+            foreach (AnalysisInfo analysisResource in anaylsisResourceList)
+            {
+                this.analysisInfoCVS.Add(analysisResource);
+            }
+        }
+
+        public ObservableCollection<AnalysisInfo> AnalysisInfoCVS { get { return analysisInfoCVS; } }
     }
 }
