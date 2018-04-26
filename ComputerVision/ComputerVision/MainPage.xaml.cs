@@ -429,7 +429,7 @@ namespace ComputerVision
         private async Task SaveMultipleImagesAsync(Uri uriAddress)
         {
             var destinationFile = await KnownFolders.PicturesLibrary.CreateFileAsync("image.png", CreationCollisionOption.GenerateUniqueName);
-            BackgroundDownloader downloader = new BackgroundDownloader();
+            BackgroundDownloader downloader = new BackgroundDownloader();            
             DownloadOperation downloadOperation = downloader.CreateDownload(uriAddress, destinationFile);
 
             // Define the cancellation token.

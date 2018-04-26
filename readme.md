@@ -25,3 +25,28 @@ As selection of images made by humans. Question still remains how much we can tr
 ### Inaccurate cascade classifiers trained.
 Small fractions of inaccurate images would make significant imprecise cascade classifiers.
 ### Positive samples
+
+## Running the tests
+### Clone
+Create a folder, and move into the folder just created, then use git clone command to download a copy of this project
+```
+$ mkdir folder
+$ cd folder
+$ git clone https://github.com/kentkim84/ComputerVisionImageAnalysis.git
+```
+### Download
+Click [Clone or Download](https://github.com/kentkim84/ComputerVisionImageAnalysis), then Click 'Download ZIP'
+
+### Test
+MySql must be running.
+Open the project with a suitable IDE.
+Run the application as Spring Boot App.
+
+## Authors
+* **Yongjin Kim** - *Initial work* - [Kentkim84](https://github.com/kentkim84)
+
+## References
+* Original Project written by [Gerard Harrison](Gerard.Harrison@gmit.ie)
+* [Microsoft Azure Computer Vision](https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/)
+* [Microsoft Azure Bing Image Search](https://docs.microsoft.com/en-us/azure/cognitive-services/bing-image-search/)
+* [Microsoft Universal Windows Platform](https://docs.microsoft.com/en-us/windows/uwp/index)

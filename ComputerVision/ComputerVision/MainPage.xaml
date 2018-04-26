@@ -195,45 +195,7 @@
                     <CaptureElement x:Name="ImagePreview" Margin="15" Stretch="Uniform"/>
                     <Image x:Name="ImageView" Stretch="Uniform" Margin="15" Visibility="Collapsed"/>
                 </Grid>
-                <!--Button Group Control-->
-                <!--<StackPanel 
-                    HorizontalAlignment="Center" Orientation="Horizontal"                                     
-                    Grid.Row="2" Grid.ColumnSpan="4">
-                    <Button 
-                        x:Name="PreviewMediaButton" 
-                        Style="{StaticResource TextBlockButtonStyle}"                    
-                        Tapped="PreviewMediaButton_Tapped">
-                        <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="Camera"/>
-                        </Viewbox>
-                    </Button>
-                    <Button 
-                        x:Name="OpenFileButton" 
-                        Style="{StaticResource TextBlockButtonStyle}"                    
-                        Tapped="OpenFileButton_Tapped">
-                        <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="OpenFile"/>
-                        </Viewbox>
-                    </Button>
-                    <Button 
-                        x:Name="QueryImageButton"
-                        Style="{StaticResource TextBlockButtonStyle}"                    
-                        Tapped="QueryImageButton_Tapped">
-                        <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="Tag"/>
-                        </Viewbox>
-                    </Button>
-                    <Button 
-                        x:Name="SearchImagesButton" 
-                        Style="{StaticResource TextBlockButtonStyle}"                    
-                        Tapped="SearchImagesButton_Tapped"
-                        Visibility="Collapsed">
-                        <Viewbox MaxWidth="30" MaxHeight="30">
-                            <SymbolIcon Symbol="BrowsePhotos"/>
-                        </Viewbox>
-                    </Button>
-                </StackPanel>-->
-
+          
             </Grid>
         </StackPanel>
 
